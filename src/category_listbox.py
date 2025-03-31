@@ -1,6 +1,6 @@
 import tkinter as tk
 
-class DragDropListbox(tk.Listbox):
+class CategoryListbox(tk.Listbox):
     def __init__(self, master, app, category, **kwargs):
         super().__init__(master, **kwargs)
         self.homescreen = app

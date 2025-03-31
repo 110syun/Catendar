@@ -11,28 +11,41 @@ class Scheduler:
     def openGUI(self):
         root = tk.Tk()
         root.title("Time Scheduler")
-        
-        # ウィンドウ全体を管理するメインフレーム
-        main_frame = tk.Frame(root, bd=2, relief=tk.SUNKEN)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # ウィンドウを横に三分割するフレームを作成
-        frame1 = tk.Frame(main_frame, bd=2, relief=tk.SUNKEN)
-        frame2 = tk.Frame(main_frame, bd=2, relief=tk.SUNKEN)
-        frame3 = tk.Frame(main_frame, bd=2, relief=tk.SUNKEN)
+        def validate_time_format(hour, minute):
+            """時刻が正しい形式かどうかを検証する"""
+            return hour.isdigit() and minute.isdigit() and 0 <= int(hour) <= 24 and 0 <= int(minute) <= 59
 
-        # フレームをウィンドウに横に配置
-        frame1.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=(25, 5))
-        frame2.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=(25, 5))
-        frame3.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=(25, 5))
+        def create_frame():
+            frame = tk.Frame(root, bd=2, relief=tk.SUNKEN)
+            frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+            
+            hour_entry = tk.Entry(frame, width=5)
+            hour_entry.pack(side=tk.LEFT, padx=2, pady=2)
 
-        # 各フレームの境目にEntryを配置
-        entry1 = tk.Entry(main_frame)
-        entry1.place(relx=0.33, y=2.5, anchor="n", width=60, height=20)  # frame1とframe2の境目
+            colon_label = tk.Label(frame, text=":")
+            colon_label.pack(side=tk.LEFT, padx=2, pady=2)
 
-        entry2 = tk.Entry(main_frame)
-        entry2.place(relx=0.66, y=2.5, anchor="n", width=60, height=20)  # frame2とframe3の境目
+            minute_entry = tk.Entry(frame, width=5)
+            minute_entry.pack(side=tk.LEFT, padx=2, pady=2)
 
+            def on_submit(event=None):
+                hour = hour_entry.get()
+                minute = minute_entry.get()
+                if validate_time_format(hour, minute):
+                    messagebox.showinfo("成功", f"時刻 {hour}:{minute} が登録されました！")
+                else:
+                    messagebox.showerror("エラー", "時刻は hh:mm の形式で入力してください（例: 14:30）")
+
+            # エントリボックスにイベントをバインド
+            hour_entry.bind("<FocusOut>", on_submit)
+            minute_entry.bind("<FocusOut>", on_submit)
+
+        def create_widgets():
+            create_button = tk.Button(root, text="追加", command=create_frame)
+            create_button.pack(side=tk.BOTTOM)
+
+        create_widgets()
         root.mainloop()
 
 if __name__ == "__main__":

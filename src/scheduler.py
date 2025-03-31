@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import filedialog
 from scheduler_listbox import SchedulerListbox
 
 class Scheduler:
@@ -99,6 +100,26 @@ class Scheduler:
             self.win.withdraw()
         self.win.protocol("WM_DELETE_WINDOW", on_close)
 
+        def save_file():
+            file_path = filedialog.asksaveasfilename(
+            title="Save As",
+            defaultextension=".pre",
+            filetypes=[("Text files", "*.pre")],
+            initialdir="./preset"
+            )
+            if file_path:
+                with open(file_path, "w", encoding="utf-8") as file:
+                    return
+
+        def load_file():
+            file_path = filedialog.askopenfilename(
+            title="Select a preset file", 
+            filetypes=[("Text files", "*.pre")],
+            initialdir="./preset"
+            )
+            if file_path:
+                return
+
         button_frame = tk.Frame(self.win)
         button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=5)
 
@@ -108,8 +129,14 @@ class Scheduler:
         delete_button = tk.Button(button_frame, text="削除", command=delete_schedule)
         delete_button.pack(side=tk.LEFT, padx=5)
         
-        Confirmed_button = tk.Button(button_frame, text="スケジュールを確定して閉じる", command=on_close)
+        Confirmed_button = tk.Button(button_frame, text="確定して閉じる", command=on_close)
         Confirmed_button.pack(side=tk.LEFT, padx=5)
+        
+        preset_save_button = tk.Button(button_frame, text="プリセット保存", command=save_file)
+        preset_save_button.pack(side=tk.LEFT, padx=5)
+
+        preset_load_button = tk.Button(button_frame, text="プリセット読み込み", command=load_file)
+        preset_load_button.pack(side=tk.LEFT, padx=5)
 
         if len(self.entries) <= 1:
             delete_button.config(state="disabled")

@@ -1,4 +1,5 @@
 import tkinter as tk
+import json
 from tkinter import filedialog
 from scheduler_listbox import SchedulerListbox
 
@@ -51,7 +52,7 @@ class Scheduler:
 
             listbox = SchedulerListbox(frame, self, width=15)
             listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-            self.frames.append([frame, options, listbox])
+            self.frames.append([frame, selected_option, listbox])
 
         def create_entries():
             frame = tk.Frame(main_frame, bd=2, relief=tk.SUNKEN)
@@ -102,23 +103,64 @@ class Scheduler:
 
         def save_file():
             file_path = filedialog.asksaveasfilename(
-            title="Save As",
-            defaultextension=".pre",
-            filetypes=[("Text files", "*.pre")],
-            initialdir="./preset"
+                title="Save As",
+                defaultextension=".pre",
+                filetypes=[("Text files", "*.pre")],
+                initialdir="./preset"
             )
             if file_path:
+                data = {
+                    "frames": [
+                        {
+                            "selected_option": frame[1].get(),
+                            "listbox_items": frame[2].get(0, tk.END)
+                        }
+                        for frame in self.frames
+                    ],
+                    "entries": [
+                        {
+                            "hour": entry[1].get(),
+                            "minute": entry[2].get()
+                        }
+                        for entry in self.entries
+                    ]
+                }
                 with open(file_path, "w", encoding="utf-8") as file:
-                    return
+                    json.dump(data, file, ensure_ascii=False, indent=4)
 
         def load_file():
             file_path = filedialog.askopenfilename(
-            title="Select a preset file", 
-            filetypes=[("Text files", "*.pre")],
-            initialdir="./preset"
+                title="Select a preset file",
+                filetypes=[("Text files", "*.pre")],
+                initialdir="./preset"
             )
             if file_path:
-                return
+                with open(file_path, "r", encoding="utf-8") as file:
+                    data = json.load(file)
+
+                for frame in self.frames:
+                    frame[0].destroy()
+                self.frames.clear()
+
+                for entry in self.entries:
+                    entry[0].destroy()
+                self.entries.clear()
+
+                for frame_data in data["frames"]:
+                    create_listbox()
+                    listbox = self.frames[-1][2]
+                    listbox.delete(0, tk.END)
+                    for item in frame_data["listbox_items"]:
+                        listbox.insert(tk.END, item)
+                    frame[1].set(frame_data["selected_option"])
+
+                for entry_data in data["entries"]:
+                    create_entries()
+                    entry = self.entries[-1]
+                    entry[1].insert(0, entry_data["hour"])
+                    entry[2].insert(0, entry_data["minute"])
+
+                relocation_entries()
 
         button_frame = tk.Frame(self.win)
         button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=5)

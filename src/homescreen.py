@@ -84,12 +84,15 @@ class Homescreen:
             create_category_frame(self.app.categories[-1])
 
         def create_widgets():
-            create_category_button = tk.Button(root, text="カテゴリ作成", command=create_category)
-            create_category_button.pack(side=tk.BOTTOM)
-            open_shceduler_button = tk.Button(root, text="スケジューラーを開く", command=lambda: self.scheduler.openGUI(root))
-            open_shceduler_button.pack(side=tk.BOTTOM)
+            button_frame = tk.Frame(root)
+            button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=5)
+            create_category_button = tk.Button(button_frame, text="カテゴリ作成", command=create_category)
+            create_category_button.pack(side=tk.LEFT, padx=5)
+            open_shceduler_button = tk.Button(button_frame, text="スケジューラーを開く", command=lambda: self.scheduler.openGUI(root))
+            open_shceduler_button.pack(side=tk.LEFT, padx=5)
             for category in self.app.categories:
                 create_category_frame(category)
 
         create_widgets()
+        self.scheduler.openGUI(root)
         root.mainloop()

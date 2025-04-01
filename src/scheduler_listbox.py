@@ -5,6 +5,8 @@ class SchedulerListbox(BaseDraggableListbox):
         super().__init__(master, **kwargs)
         self.scheduler = app
         self.categories = []
+        
+        self.bind("<Button-3>", self.on_right_click)
 
     def drop_item(self, event):
         """ドロップ処理"""
@@ -19,6 +21,12 @@ class SchedulerListbox(BaseDraggableListbox):
             if self.drag_label:
                 self.drag_label.destroy()
                 self.drag_label = None
+                
+    def on_right_click(self, event):
+        clicked_index = self.nearest(event.y)
+        if clicked_index >= 0:
+            category = self.categories[clicked_index]
+            self.remove_category(category)
 
     def add_category(self, category):
         if category in self.categories:

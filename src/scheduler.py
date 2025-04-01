@@ -1,7 +1,11 @@
+import threading
 import tkinter as tk
 import json
+from datetime import datetime
 from tkinter import filedialog
+from tkinter import messagebox
 from scheduler_listbox import SchedulerListbox
+from timekeeper import Timekeeper
 
 class Scheduler:
     def __init__(self, app):
@@ -11,6 +15,7 @@ class Scheduler:
         self.frames = []
         self.entries = []
         self.initialize = True
+        self.times = []
 
     def get_listbox_at(self, event):
         for frame in self.frames:
@@ -31,7 +36,11 @@ class Scheduler:
         if hasattr(self, "win") and self.win.winfo_exists():
             self.win.deiconify()
             return
-
+        
+        if hasattr(self, "timekeeper") and self.timekeeper:
+            self.timekeeper.stop()
+            self.timekeeper = None
+        
         if root:
             self.win = tk.Toplevel(root)
         else :
@@ -84,7 +93,7 @@ class Scheduler:
             relocation_entries()
             if len(self.entries) > 1:
                 delete_button.config(state="normal")
-            
+
         def delete_schedule():
             frame_to_remove = self.frames.pop()
             frame_to_remove[0].destroy()
@@ -97,9 +106,32 @@ class Scheduler:
             if len(self.entries) <= 1:
                 delete_button.config(state="disabled")
 
+        def validate_time_format():
+            self.times.clear()
+            now = datetime.now()
+            for entry in self.entries:
+                hour = entry[1].get()
+                minute = entry[2].get()
+                if hour.isdigit() and minute.isdigit() and 0 <= int(hour) <= 24 and 0 <= int(minute) <= 59:
+                    dt = datetime(now.year, now.month, now.day, int(hour), int(minute))
+                    if not self.times or self.times[-1] < dt:
+                        self.times.append(dt)
+                    else:
+                        messagebox.showwarning("警告", "時間の経過に沿っていません")
+                        return
+                else:
+                    messagebox.showwarning("エラー", "'0~24:0~59'の半角数字を入力してください")
+                    return
+            result = messagebox.askyesno("OK", "プリセットを保存しますか？")
+            if result:
+                save_file()
+            on_close()
+
         def on_close():
+            self.timekeeper = Timekeeper(self)
+            threading.Thread(target=self.timekeeper.main, daemon=True).start()
             self.win.withdraw()
-        self.win.protocol("WM_DELETE_WINDOW", on_close)
+        self.win.protocol("WM_DELETE_WINDOW", validate_time_format)
 
         def save_file():
             file_path = filedialog.asksaveasfilename(
@@ -148,10 +180,13 @@ class Scheduler:
 
                 for frame_data in data["frames"]:
                     create_listbox()
-                    listbox = self.frames[-1][2]
+                    frame = self.frames[-1]
+                    listbox = frame[2]
                     listbox.delete(0, tk.END)
                     for item in frame_data["listbox_items"]:
-                        listbox.insert(tk.END, item)
+                        for category in self.watcher.categories:
+                            if category.name == item:
+                                listbox.add_category(category)
                     frame[1].set(frame_data["selected_option"])
 
                 for entry_data in data["entries"]:
@@ -159,7 +194,8 @@ class Scheduler:
                     entry = self.entries[-1]
                     entry[1].insert(0, entry_data["hour"])
                     entry[2].insert(0, entry_data["minute"])
-
+                    
+                self.update_listbox()
                 relocation_entries()
 
         button_frame = tk.Frame(self.win)
@@ -171,7 +207,7 @@ class Scheduler:
         delete_button = tk.Button(button_frame, text="削除", command=delete_schedule)
         delete_button.pack(side=tk.LEFT, padx=5)
         
-        Confirmed_button = tk.Button(button_frame, text="確定して閉じる", command=on_close)
+        Confirmed_button = tk.Button(button_frame, text="確定して閉じる", command=validate_time_format)
         Confirmed_button.pack(side=tk.LEFT, padx=5)
         
         preset_save_button = tk.Button(button_frame, text="プリセット保存", command=save_file)

@@ -1,4 +1,8 @@
 import tkinter as tk
+import threading
+import pystray
+from pystray import MenuItem as item, Icon
+from PIL import Image
 from category import Category
 from category_listbox import CategoryListbox
 from category_label import CategoryLabel
@@ -33,12 +37,22 @@ class Homescreen:
     def openGUI(self):
         root = tk.Tk()
         root.title("Window Management")
+        
+        def create_menu():
+            return (item("ウィンドウを開く", show_gui), item("終了", on_closing))
 
         def on_closing():
             self.app.running = False
+            icon.stop()
             root.quit()
+            
+        def show_gui():
+            root.deiconify()
 
-        root.protocol("WM_DELETE_WINDOW", on_closing)
+        def hide_window():
+            root.withdraw()
+
+        root.protocol("WM_DELETE_WINDOW", hide_window)
 
         def rename_category(label, frame, category):
             category_index = self.app.categories.index(category)
@@ -93,6 +107,9 @@ class Homescreen:
             for category in self.app.categories:
                 create_category_frame(category)
 
+        image = Image.new("RGB", (64, 64), (0, 0, 255))
+        icon = Icon("test", image, menu=create_menu())
+        threading.Thread(target=icon.run, daemon=True).start()
         create_widgets()
         self.scheduler.openGUI(root)
         root.mainloop()

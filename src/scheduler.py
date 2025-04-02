@@ -59,7 +59,7 @@ class Scheduler:
             dropdown = tk.OptionMenu(frame, selected_option, *options)
             dropdown.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
-            listbox = SchedulerListbox(frame, self, width=15)
+            listbox = SchedulerListbox(frame, self, width=5)
             listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
             self.frames.append([frame, selected_option, listbox])
 

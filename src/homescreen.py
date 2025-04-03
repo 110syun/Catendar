@@ -7,6 +7,7 @@ from category import Category
 from category_listbox import CategoryListbox
 from category_label import CategoryLabel
 from scheduler import Scheduler
+from self_check_editor import SelfCheckEditor
 
 class Homescreen:
     def __init__(self, app):
@@ -106,10 +107,15 @@ class Homescreen:
             open_shceduler_button.pack(side=tk.LEFT, padx=5)
             for category in self.app.categories:
                 create_category_frame(category)
+                
+        def start_self_check():
+            editor = SelfCheckEditor()
+            editor.start_self_check(root)
 
         image = Image.new("RGB", (64, 64), (0, 0, 255))
         icon = Icon("test", image, menu=create_menu())
         threading.Thread(target=icon.run, daemon=True).start()
         create_widgets()
         self.scheduler.openGUI(root)
+        threading.Thread(target=start_self_check, daemon=True).start()
         root.mainloop()

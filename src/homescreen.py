@@ -1,11 +1,18 @@
 import tkinter as tk
+import threading
+import pystray
+from pystray import MenuItem as item, Icon
+from PIL import Image
 from category import Category
-from dnd_listbox import DragDropListbox
+from category_listbox import CategoryListbox
+from category_label import CategoryLabel
+from scheduler import Scheduler
 
 class Homescreen:
     def __init__(self, app):
         self.app = app
         self.listboxes = []
+        self.scheduler = Scheduler(self)
         
     def update_listbox(self, all):
         if self.listboxes:
@@ -30,12 +37,22 @@ class Homescreen:
     def openGUI(self):
         root = tk.Tk()
         root.title("Window Management")
+        
+        def create_menu():
+            return (item("ウィンドウを開く", show_gui), item("終了", on_closing))
 
         def on_closing():
             self.app.running = False
+            icon.stop()
             root.quit()
+            
+        def show_gui():
+            root.deiconify()
 
-        root.protocol("WM_DELETE_WINDOW", on_closing)
+        def hide_window():
+            root.withdraw()
+
+        root.protocol("WM_DELETE_WINDOW", hide_window)
 
         def rename_category(label, frame, category):
             category_index = self.app.categories.index(category)
@@ -56,16 +73,18 @@ class Homescreen:
                     del self.listboxes[category_index]
                     entry.destroy()
                     self.update_listbox(True)
+                self.scheduler.update_listbox()
 
             entry.bind("<Return>", save_name)
+            entry.bind("<FocusOut>", save_name)
 
         def create_category_frame(category):
             frame = tk.Frame(root, bd=2, relief=tk.SUNKEN)
             frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
-            label = tk.Label(frame, text=category.name)
+            label = CategoryLabel(frame, self, category, text=category.name)
             label.pack()
             label.bind("<Double-Button-1>", lambda event, lbl=label: rename_category(lbl, frame, category))
-            listbox = DragDropListbox(frame, self, category)
+            listbox = CategoryListbox(frame, self, category, width=15)
             listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
             self.listboxes.append(listbox)
             scrollbar = tk.Scrollbar(frame, orient="vertical", command=listbox.yview)
@@ -79,11 +98,18 @@ class Homescreen:
             create_category_frame(self.app.categories[-1])
 
         def create_widgets():
+            button_frame = tk.Frame(root)
+            button_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=5)
+            create_category_button = tk.Button(button_frame, text="カテゴリ作成", command=create_category)
+            create_category_button.pack(side=tk.LEFT, padx=5)
+            open_shceduler_button = tk.Button(button_frame, text="スケジューラーを開く", command=lambda: self.scheduler.openGUI(root))
+            open_shceduler_button.pack(side=tk.LEFT, padx=5)
             for category in self.app.categories:
                 create_category_frame(category)
 
-            create_category_button = tk.Button(root, text="カテゴリ作成", command=create_category)
-            create_category_button.pack(side=tk.BOTTOM)
-
+        image = Image.new("RGB", (64, 64), (0, 0, 255))
+        icon = Icon("test", image, menu=create_menu())
+        threading.Thread(target=icon.run, daemon=True).start()
         create_widgets()
+        self.scheduler.openGUI(root)
         root.mainloop()

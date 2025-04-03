@@ -64,6 +64,20 @@ class Watcher:
                         if self.timestamps:
                             self.timestamps[-1]["end"] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_time))
                     else:
+                        with self.lock:
+                            self.previous_window = window_name
+                            for category in self.categories:
+                                for item in category.items:
+                                    if item.name == self.previous_window:
+                                        self.previous_category = category
+                            self.timestamps.append({
+                                "app": self.previous_window,
+                                "category": self.previous_category.name if self.previous_category else "未分類",
+                                "start": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(previous_time)),
+                                "end": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_time))
+                            })
+                else:
+                    with self.lock:
                         self.previous_window = window_name
                         for category in self.categories:
                             for item in category.items:
@@ -74,18 +88,6 @@ class Watcher:
                             "category": self.previous_category.name if self.previous_category else "未分類",
                             "start": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(previous_time)),
                             "end": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_time))
-                        })
-                else:
-                    self.previous_window = window_name
-                    for category in self.categories:
-                        for item in category.items:
-                            if item.name == self.previous_window:
-                                self.previous_category = category
-                    self.timestamps.append({
-                        "app": self.previous_window,
-                        "category": self.previous_category.name if self.previous_category else "未分類",
-                        "start": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(previous_time)),
-                        "end": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_time))
                     })
                 previous_time = current_time
             time.sleep(1)
@@ -93,4 +95,7 @@ class Watcher:
     def delete_category(self, category_index):
         for item in self.categories[category_index].items:
             self.categories[0].add_item(item)
+        for frame in self.homescreen.scheduler.frames:
+            listbox = frame[2]
+            listbox.remove_category(self.categories[category_index])
         del self.categories[category_index]

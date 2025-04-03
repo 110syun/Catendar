@@ -1,16 +1,14 @@
 import tkinter as tk
 
-class DragDropListbox(tk.Listbox):
-    def __init__(self, master, app, category, **kwargs):
+class BaseDraggableListbox(tk.Listbox):
+    def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
-        self.homescreen = app
-        self.category = category
+        self.drag_data = {"index": None, "text": None, "started": False}
+        self.drag_label = None
         self.bind("<ButtonPress-1>", self.prepare_drag)
         self.bind("<B1-Motion>", self.start_drag)
         self.bind("<B1-Motion>", self.do_drag, add=True)
         self.bind("<ButtonRelease-1>", self.drop_item)
-        self.drag_data = {"index": None, "text": None, "started": False}
-        self.drag_label = None
 
     def prepare_drag(self, event):
         """ドラッグ準備（クリック時）"""
@@ -47,15 +45,4 @@ class DragDropListbox(tk.Listbox):
 
     def drop_item(self, event):
         """ドロップ処理"""
-        if self.drag_data["started"]:
-            with self.homescreen.app.lock:
-                target_listbox = self.homescreen.get_listbox_at(event)
-                if target_listbox:
-                    item = self.category.items.pop(self.drag_data["index"])
-                    target_listbox.category.add_item(item)
-                self.homescreen.update_listbox(True)
-                self.drag_data = {"index": None, "text": None, "started": False}
-
-                if self.drag_label:
-                    self.drag_label.destroy()
-                    self.drag_label = None
+        raise NotImplementedError("drop_itemメソッドはサブクラスで実装してください。")

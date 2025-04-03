@@ -10,9 +10,6 @@ def cleanup(watcher):
     with open("categories.json", "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-    if not os.path.exists('log'):
-        os.makedirs('log')
-
     timestamp_filename = time.strftime('log/%Y-%m-%d') + ".txt"
     with open(timestamp_filename, "w", encoding="utf-8") as f:
         for timestamp in watcher.timestamps:
@@ -25,6 +22,12 @@ def main():
     except FileNotFoundError:
         categories_data = None
 
+    if not os.path.exists('log'):
+        os.makedirs('log')
+    
+    if not os.path.exists('preset'):
+        os.makedirs('preset')
+    
     timestamps = []
     timestamp_filename = time.strftime('log/%Y-%m-%d') + ".txt"
     try:

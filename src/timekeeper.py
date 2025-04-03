@@ -35,7 +35,6 @@ class Timekeeper:
                     stress += 1
             if stress == 10:
                 stress = 0
-                messagebox.showwarning("test", "test")
             if not self.last and now > self.scheduler.times[self.current_phase]:
                 stress = 0
                 self.current_phase += 1

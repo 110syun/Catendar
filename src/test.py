@@ -1,53 +1,39 @@
-import tkinter as tk
-from tkinter import messagebox
-import re
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
-class Scheduler:
-    def __init__(self, app):
-        if (app):
-            self.homescreen = app
-            self.watcher = self.homescreen.app
+class GoogleSpreadsheetManager:
+    def __init__(self, json_keyfile, spreadsheet_url):
+        self.json_keyfile = json_keyfile
+        self.spreadsheet_url = spreadsheet_url
+        self.client = self.authenticate_gspread()
+        self.spreadsheet = self.get_spreadsheet()
 
-    def openGUI(self):
-        root = tk.Tk()
-        root.title("Time Scheduler")
+    def authenticate_gspread(self):
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_name(self.json_keyfile, scope)
+        return gspread.authorize(creds)
 
-        def validate_time_format(hour, minute):
-            """時刻が正しい形式かどうかを検証する"""
-            return hour.isdigit() and minute.isdigit() and 0 <= int(hour) <= 24 and 0 <= int(minute) <= 59
+    def get_spreadsheet(self):
+        return self.client.open_by_url(self.spreadsheet_url)
 
-        def create_frame():
-            frame = tk.Frame(root, bd=2, relief=tk.SUNKEN)
-            frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
-            
-            hour_entry = tk.Entry(frame, width=5)
-            hour_entry.pack(side=tk.LEFT, padx=2, pady=2)
+    def copy_sheet(self, source_sheet_name, new_sheet_name):
+        source_sheet = self.spreadsheet.worksheet(source_sheet_name)
+        source_sheet.duplicate(new_sheet_name=new_sheet_name, insert_sheet_index=1)
 
-            colon_label = tk.Label(frame, text=":")
-            colon_label.pack(side=tk.LEFT, padx=2, pady=2)
+    def rename_sheet(self, old_name, new_name):
+        sheet = self.spreadsheet.worksheet(old_name)
+        sheet.update_title(new_name)
 
-            minute_entry = tk.Entry(frame, width=5)
-            minute_entry.pack(side=tk.LEFT, padx=2, pady=2)
-
-            def on_submit(event=None):
-                hour = hour_entry.get()
-                minute = minute_entry.get()
-                if validate_time_format(hour, minute):
-                    messagebox.showinfo("成功", f"時刻 {hour}:{minute} が登録されました！")
-                else:
-                    messagebox.showerror("エラー", "時刻は hh:mm の形式で入力してください（例: 14:30）")
-
-            # エントリボックスにイベントをバインド
-            hour_entry.bind("<FocusOut>", on_submit)
-            minute_entry.bind("<FocusOut>", on_submit)
-
-        def create_widgets():
-            create_button = tk.Button(root, text="追加", command=create_frame)
-            create_button.pack(side=tk.BOTTOM)
-
-        create_widgets()
-        root.mainloop()
+    def edit_cell(self, sheet_name, row, col, value):
+        sheet = self.spreadsheet.worksheet(sheet_name)
+        sheet.update_cell(row, col, value)
 
 if __name__ == "__main__":
-    scheduler = Scheduler(None)
-    scheduler.openGUI()
+    JSON_KEYFILE = "client_secret.json"
+    SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1NngcnXZGm_kWHHPRmA95seKWpKkF3pFmQT0XFGtp02k/edit?usp=drive_link"
+    
+    manager = GoogleSpreadsheetManager(JSON_KEYFILE, SPREADSHEET_URL)
+    
+    manager.copy_sheet("SourceSheet", "NewSheet")
+    manager.rename_sheet("OldSheetName", "NewSheetName")
+    manager.edit_cell("SheetName", 1, 1, "New Value")

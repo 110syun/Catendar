@@ -5,3 +5,4 @@ wmi
 pywin32
 gspread
 oauth2client
+pyqt5

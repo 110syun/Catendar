@@ -39,9 +39,13 @@ class SelfCheckEditor:
             self.win = tk.Tk()
         self.current_index = 0
         self.win.title("Self Check")
-        self.label = tk.Label(self.win, text = self.checklist[self.current_index])
-        self.label.pack(pady=20)
-        self.button_frame = tk.Frame(self.win)
+        self.today_label = tk.Label(self.win, text = self.now.strftime("%Y/%m/%d") + " のセルフチェック")
+        self.today_label.pack(pady = 10)
+        self.frame = tk.Frame(self.win, bd=2, relief=tk.SUNKEN)
+        self.frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.label = tk.Label(self.frame, text = self.checklist[self.current_index])
+        self.label.pack(pady = 5)
+        self.button_frame = tk.Frame(self.frame)
         self.button_frame.pack()
         self.create_buttons()
 

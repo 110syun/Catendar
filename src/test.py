@@ -1,66 +1,44 @@
 import sys
-import json
-import os
 from PyQt5.QtWidgets import QApplication, QLabel, QWidget
-from PyQt5.QtCore import Qt, QTimer, QPoint
+from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPixmap
 
-class CatWindow(QWidget):
-    def __init__(self):
+class TransparentImageWidget(QWidget):
+    def __init__(self, image_path):
         super().__init__()
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
+        # ラベルに画像を設定
         self.label = QLabel(self)
-        self.label.setStyleSheet("background: transparent")
+        pixmap = QPixmap(image_path)
+        self.label.setPixmap(pixmap)
+        self.label.resize(pixmap.size())
+        self.resize(pixmap.size())
 
-        # 画像の読み込み
-        self.images = {
-            "sleep": QPixmap("images/sleep.png"),
-            "walk1": QPixmap("images/walk1.png"),
-            "walk2": QPixmap("images/walk2.png"),
-        }
+        self.drag_position = None
 
-        self.current_state = "sleep"
-        self.walk_toggle = True
-        self.move_offset = QPoint(5, 0)
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.drag_position = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
 
-        self.setFixedSize(100, 100)
-        self.label.setPixmap(self.images["sleep"])
-        self.label.resize(100, 100)
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.LeftButton and self.drag_position:
+            self.move(event.globalPos() - self.drag_position)
+            event.accept()
 
-        # 状態監視タイマー
-        self.state_timer = QTimer()
-        self.state_timer.timeout.connect(self.update_state)
-        self.state_timer.start(1000)  # 毎秒チェック
-
-        # アニメーションタイマー
-        self.anim_timer = QTimer()
-        self.anim_timer.timeout.connect(self.animate)
-        self.anim_timer.start(500)
-
-    def update_state(self):
-        if not os.path.exists("state.json"):
-            return
-        try:
-            with open("state.json", "r") as f:
-                data = json.load(f)
-            self.current_state = data.get("state", "sleep")
-        except Exception as e:
-            print(f"状態ファイル読み取りエラー: {e}")
-
-    def animate(self):
-        if self.current_state == "walk":
-            img = "walk1" if self.walk_toggle else "walk2"
-            self.label.setPixmap(self.images[img])
-            self.move(self.pos() + self.move_offset)
-            self.walk_toggle = not self.walk_toggle
-        else:
-            self.label.setPixmap(self.images["sleep"])
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.drag_position = None
+            event.accept()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    cat = CatWindow()
-    cat.move(300, 300)
-    cat.show()
+
+    # 透過PNG画像のパスを指定
+    image_path = "images/walk1.png"  # ここを透過PNG画像のパスに変更してください
+    widget = TransparentImageWidget(image_path)
+    widget.show()
+
     sys.exit(app.exec_())

@@ -6,6 +6,7 @@ from PyQt5.QtGui import QPixmap
 class TransparentImageWidget(QWidget):
     def __init__(self, image_path):
         super().__init__()
+        self.setMouseTracking(True)
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
@@ -24,9 +25,7 @@ class TransparentImageWidget(QWidget):
             event.accept()
 
     def mouseMoveEvent(self, event):
-        if event.buttons() == Qt.LeftButton and self.drag_position:
-            self.move(event.globalPos() - self.drag_position)
-            event.accept()
+        print("test")
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:

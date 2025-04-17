@@ -36,7 +36,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     # 透過PNG画像のパスを指定
-    image_path = "images/walk1.png"  # ここを透過PNG画像のパスに変更してください
+    image_path = "images/001.png"  # ここを透過PNG画像のパスに変更してください
     widget = TransparentImageWidget(image_path)
     widget.show()
 

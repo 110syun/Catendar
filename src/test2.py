@@ -11,8 +11,10 @@ class SpriteAnimator(QWidget):
     def __init__(self, sprite_path, num_frames, queue, target_hwnd, manager):
         super().__init__()
         self.manager = manager
-        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
+        self.active = False
+        self.semiactive = False
         
         self.hwnd_target = target_hwnd
         self.target_rect = win32gui.GetWindowRect(self.hwnd_target)
@@ -32,7 +34,7 @@ class SpriteAnimator(QWidget):
         self.frame_height = self.sprite_sheet.height()
         
         self.label = QLabel(self)
-        self.label.setGeometry(width - self.frame_width - 10, height - self.frame_height - 10, self.frame_width, self.frame_height)
+        self.label.setGeometry(width - self.frame_width + 100, height - self.frame_height - 10, self.frame_width, self.frame_height)
         
         self.update_frame()
 
@@ -51,9 +53,9 @@ class SpriteAnimator(QWidget):
         self.queue_timer.timeout.connect(self.process_queue)
         self.queue_timer.start(50)
         
-        self.speed_per_second = 100
+        self.speed_per_second = 1
         self.animation = QPropertyAnimation(self.label, b"pos")
-        self.animation.setEasingCurve(QEasingCurve.OutQuad)
+        self.animation.setEasingCurve(QEasingCurve.Linear)
         self.update_animation()
 
     def update_frame(self):
@@ -70,6 +72,8 @@ class SpriteAnimator(QWidget):
         if win32gui.IsWindow(self.hwnd_target):
             rect = win32gui.GetWindowRect(self.hwnd_target)
             left, top, right, bottom = rect
+            left, top = left + 10, top + 10
+            right, bottom = right - 10, bottom - 10
             width = right - left
             height = bottom - top
 
@@ -77,7 +81,6 @@ class SpriteAnimator(QWidget):
             self.setMask(QRegion(0, 0, width, height))
             
             self.label.move(self.label.x(), height - self.frame_height - 10)
-            self.update_animation()
         else:
             del self.manager.widgets[self.hwnd_target]
             self.deleteLater()
@@ -97,17 +100,33 @@ class SpriteAnimator(QWidget):
                 0, 0, 0, 0,
                 win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE
             )
+        else:
+            self.active = False
+        self.update_animation()
             
     def update_animation(self):
-        destination_x = (self.width - self.frame_width - 10)
-        destination = QPoint(destination_x, self.label.x())
-        start_pos = self.label.pos()
-        distance = abs(destination_x - self.label.x())
-        duration = distance / self.speed_per_second * 1000
-        self.animation.setStartValue(start_pos)
-        self.animation.setEndValue(destination)
-        self.animation.setDuration(int(duration))
+        if self.active:
+            destination_x = (self.width() - self.frame_width - 10)
+            destination = QPoint(destination_x, self.label.y())
+            start_pos = self.label.pos()
+            distance = abs(destination_x - self.label.x())
+            duration = distance / self.speed_per_second * 1000
+            self.animation.setStartValue(start_pos)
+            self.animation.setEndValue(destination)
+            self.animation.setDuration(int(duration))
         
+        else:
+            destination_x = (self.width() - self.frame_width + 100)
+            destination = QPoint(destination_x, self.label.y())
+            start_pos = self.label.pos()
+            distance = abs(destination_x - self.label.x())
+            duration = distance / self.speed_per_second * 1000
+            self.animation.setStartValue(start_pos)
+            self.animation.setEndValue(destination)
+            self.animation.setDuration(int(duration))
+            if distance < 1 and self.semiactive:
+                self.manager.off_screen = True
+                self.semiactive = False
         self.animation.start()
 
     def process_queue(self):
@@ -120,6 +139,7 @@ class SpriteAnimator(QWidget):
 class WidgetManager:
     def __init__(self, queue):
         self.queue = queue
+        self.off_screen = True
         self.widgets = {}
 
     def get_foreground_window(self):
@@ -141,12 +161,16 @@ class WidgetManager:
             manager = self
         )
             self.widgets[hwnd].show()
+        if self.off_screen:
+            self.widgets[hwnd].active = True
+            self.widgets[hwnd].semiactive = True
+            self.off_screen = False
 
     def run_test(self):
         app = QApplication(sys.argv)
         timer = QTimer()
         timer.timeout.connect(self.get_foreground_window)
-        timer.start(10)
+        timer.start(100)
         sys.exit(app.exec_())
     
 if __name__ == "__main__":

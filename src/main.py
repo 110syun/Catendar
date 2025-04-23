@@ -17,7 +17,7 @@ def cleanup(watcher):
             f.write(f"app: {timestamp['app']}, category: {timestamp['category']}, start: {timestamp['start']}, end: {timestamp['end']}\n")
 
 def start_test_subprocess(queue):
-    from test import run_test
+    from test2 import run_test
     run_test(queue)
 
 def main():

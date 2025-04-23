@@ -1,74 +1,155 @@
+from test import SpriteAnimator
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import Qt, pyqtSignal, QObject, QTimer
-from pynput import mouse
-from threading import Thread
+from PyQt5.QtWidgets import QApplication, QLabel, QWidget
+from PyQt5.QtGui import QPixmap, QRegion
+from PyQt5.QtCore import QTimer, Qt, QPoint, QPropertyAnimation, QEasingCurve
+import multiprocessing
+import win32gui
+import win32con
 
-class MouseSignalEmitter(QObject):
-    position_changed = pyqtSignal(int, int)
-
-class MouseListenerThread(Thread):
-    def __init__(self, emitter):
+class SpriteAnimator(QWidget):
+    def __init__(self, sprite_path, num_frames, queue, target_hwnd, manager):
         super().__init__()
-        self.emitter = emitter
-        self.daemon = True
-
-    def run(self):
-        def on_move(x, y):
-            self.emitter.position_changed.emit(x, y)
-
-        with mouse.Listener(on_move=on_move) as listener:
-            listener.join()
-
-class ImageFollower(QWidget):
-    def __init__(self, sprite_sheet_path, sprite_count):
-        super().__init__()
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.manager = manager
+        self.setWindowFlags(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
-
-        # スプライトシートの読み込み
-        self.sprite_sheet = QPixmap(sprite_sheet_path)
-        self.sprite_count = sprite_count
-        self.current_sprite_index = 0
-
-        # スプライトのサイズを計算
-        self.sprite_width = self.sprite_sheet.width() // sprite_count
-        self.sprite_height = self.sprite_sheet.height()
-
-        # QLabelの設定
+        
+        self.hwnd_target = target_hwnd
+        self.target_rect = win32gui.GetWindowRect(self.hwnd_target)
+        
+        left, top, right, bottom = self.target_rect
+        width = right - left
+        height = bottom - top
+        
+        self.setGeometry(left, top, width, height)
+        self.setMask(QRegion(0, 0, width, height))
+        
+        self.sprite_sheet = QPixmap(sprite_path)
+        self.num_frames = num_frames
+        self.current_frame = 0
+        
+        self.frame_width = self.sprite_sheet.width() // num_frames
+        self.frame_height = self.sprite_sheet.height()
+        
         self.label = QLabel(self)
-        self.update_sprite()
-        self.label.resize(self.sprite_width, self.sprite_height)
+        self.label.setGeometry(width - self.frame_width - 10, height - self.frame_height - 10, self.frame_width, self.frame_height)
+        
+        self.update_frame()
 
-        # マウス追従の設定
-        self.emitter = MouseSignalEmitter()
-        self.emitter.position_changed.connect(self.update_goal)
-        self.listener_thread = MouseListenerThread(self.emitter)
-        self.listener_thread.start()
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.next_frame)
+        self.timer.start(100)
 
-        # スプライト切り替え用のタイマー
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.next_sprite)
-        self.timer.start(100)  # 100msごとにスプライトを切り替え
+        self.position_timer = QTimer()
+        self.position_timer.timeout.connect(self.follow_window)
+        self.position_timer.start(10)
 
-    def update_sprite(self):
-        # 現在のスプライトを切り出して表示
-        x = self.current_sprite_index * self.sprite_width
-        sprite = self.sprite_sheet.copy(x, 0, self.sprite_width, self.sprite_height)
-        self.label.setPixmap(sprite)
+        self.hwnd_animator = int(self.winId())
 
-    def next_sprite(self):
-        # 次のスプライトに切り替え
-        self.current_sprite_index = (self.current_sprite_index + 1) % self.sprite_count
-        self.update_sprite()
+        self.queue = queue
+        self.queue_timer = QTimer()
+        self.queue_timer.timeout.connect(self.process_queue)
+        self.queue_timer.start(50)
+        
+        self.speed_per_second = 100
+        self.animation = QPropertyAnimation(self.label, b"pos")
+        self.animation.setEasingCurve(QEasingCurve.OutQuad)
+        self.update_animation()
 
-    def update_goal(self, x, y):
-        self.move(x, y)
+    def update_frame(self):
+        x = self.current_frame * self.frame_width
+        cropped = self.sprite_sheet.copy(x, 0, self.frame_width, self.frame_height)
+        self.label.setPixmap(cropped)
+        
+    def next_frame(self):
+        self.current_frame = (self.current_frame + 1) % self.num_frames
+        self.update_frame()
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    # スプライトシートのパスとスプライト数を指定
-    window = ImageFollower('images//rotating_arc_spritesheet2.png', 10)
-    window.show()
-    sys.exit(app.exec_())
+    def follow_window(self):
+        current_hwnd = win32gui.GetForegroundWindow()
+        if win32gui.IsWindow(self.hwnd_target):
+            rect = win32gui.GetWindowRect(self.hwnd_target)
+            left, top, right, bottom = rect
+            width = right - left
+            height = bottom - top
+
+            self.setGeometry(left, top, width, height)
+            self.setMask(QRegion(0, 0, width, height))
+            
+            self.label.move(self.label.x(), height - self.frame_height - 10)
+            self.update_animation()
+        else:
+            del self.manager.widgets[self.hwnd_target]
+            self.deleteLater()
+        if self.hwnd_target == current_hwnd:
+            win32gui.SetWindowPos(
+                self.hwnd_animator,
+                win32con.HWND_TOPMOST,
+                self.x(),
+                self.y(),
+                self.width(),
+                self.height(),
+                win32con.SWP_NOACTIVATE | win32con.SWP_SHOWWINDOW
+            )
+            win32gui.SetWindowPos(
+                self.hwnd_animator,
+                win32con.HWND_NOTOPMOST,
+                0, 0, 0, 0,
+                win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE
+            )
+            
+    def update_animation(self):
+        destination_x = (self.width - self.frame_width - 10)
+        destination = QPoint(destination_x, self.label.x())
+        start_pos = self.label.pos()
+        distance = abs(destination_x - self.label.x())
+        duration = distance / self.speed_per_second * 1000
+        self.animation.setStartValue(start_pos)
+        self.animation.setEndValue(destination)
+        self.animation.setDuration(int(duration))
+        
+        self.animation.start()
+
+    def process_queue(self):
+        try:
+            while not self.queue.empty():
+                value = self.queue.get_nowait()
+        except Exception as e:
+            print(f"Queue processing error: {e}")
+
+class WidgetManager:
+    def __init__(self, queue):
+        self.queue = queue
+        self.widgets = {}
+
+    def get_foreground_window(self):
+        hwnd = win32gui.GetForegroundWindow()
+        if hwnd == 0:
+            return
+        try:
+            class_name = win32gui.GetClassName(hwnd)
+        except pywintypes.error:
+            return
+        if class_name == "Shell_TrayWnd":
+            return
+        if hwnd not in self.widgets:
+            self.widgets[hwnd] = SpriteAnimator(
+            sprite_path="src/images/test.png",
+            num_frames=1,
+            queue=self.queue,
+            target_hwnd=hwnd,
+            manager = self
+        )
+            self.widgets[hwnd].show()
+
+    def run_test(self):
+        app = QApplication(sys.argv)
+        timer = QTimer()
+        timer.timeout.connect(self.get_foreground_window)
+        timer.start(10)
+        sys.exit(app.exec_())
+    
+if __name__ == "__main__":
+    queue=multiprocessing.Queue()
+    manager = WidgetManager(queue)
+    manager.run_test()

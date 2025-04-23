@@ -3,6 +3,7 @@ import atexit
 import json
 import time
 import os
+import multiprocessing
 from watcher import Watcher
 
 def cleanup(watcher):
@@ -14,6 +15,10 @@ def cleanup(watcher):
     with open(timestamp_filename, "w", encoding="utf-8") as f:
         for timestamp in watcher.timestamps:
             f.write(f"app: {timestamp['app']}, category: {timestamp['category']}, start: {timestamp['start']}, end: {timestamp['end']}\n")
+
+def start_test_subprocess(queue):
+    from test import run_test
+    run_test(queue)
 
 def main():
     try:
@@ -43,10 +48,23 @@ def main():
     except FileNotFoundError:
         pass
 
-    watcher = Watcher(categories_data, timestamps)
+    queue = multiprocessing.Queue()
+
+    watcher = Watcher(queue, categories_data, timestamps)
     atexit.register(cleanup, watcher)
     threading.Thread(target=watcher.homescreen.openGUI, daemon=True).start()
+
+    process = multiprocessing.Process(
+        target=start_test_subprocess,
+        args=(queue,)
+    )
+    process.start()
+
+    queue.put("start_animation")
+    queue.put("stop_animation")
+
     watcher.update_window_name()
+    process.join()
 
 if __name__ == "__main__":
     main()

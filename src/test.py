@@ -1,43 +1,109 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QLabel, QWidget
-from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QRegion
+from PyQt5.QtCore import QTimer, Qt
+import multiprocessing
+import win32gui
+import win32con
 
-class TransparentImageWidget(QWidget):
-    def __init__(self, image_path):
+class SpriteAnimator(QWidget):
+    def __init__(self, sprite_path, num_frames, queue):
         super().__init__()
-        self.setMouseTracking(True)
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
-
-        # ラベルに画像を設定
+        
+        self.hwnd_target = win32gui.GetForegroundWindow()
+        self.target_rect = win32gui.GetWindowRect(self.hwnd_target)
+        
+        left, top, right, bottom = self.target_rect
+        width = right - left
+        height = bottom - top
+        
+        self.setGeometry(left, top, width, height)
+        self.setMask(QRegion(0, 0, width, height))
+        
+        self.sprite_sheet = QPixmap(sprite_path)
+        self.num_frames = num_frames
+        self.current_frame = 0
+        
+        self.frame_width = self.sprite_sheet.width() // num_frames
+        self.frame_height = self.sprite_sheet.height()
+        
         self.label = QLabel(self)
-        pixmap = QPixmap(image_path)
-        self.label.setPixmap(pixmap)
-        self.label.resize(pixmap.size())
-        self.resize(pixmap.size())
+        self.label.setGeometry(width - self.frame_width - 10, height - self.frame_height - 10, self.frame_width, self.frame_height)
+        
+        self.update_frame()
 
-        self.drag_position = None
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.next_frame)
+        self.timer.start(100)
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.drag_position = event.globalPos() - self.frameGeometry().topLeft()
-            event.accept()
+        self.position_timer = QTimer()
+        self.position_timer.timeout.connect(self.follow_window)
+        self.position_timer.start(10)
 
-    def mouseMoveEvent(self, event):
-        print("test")
+        self.hwnd_animator = int(self.winId())
 
-    def mouseReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.drag_position = None
-            event.accept()
+        self.queue = queue
+        self.queue_timer = QTimer()
+        self.queue_timer.timeout.connect(self.process_queue)
+        self.queue_timer.start(50)
 
-if __name__ == "__main__":
+    def update_frame(self):
+        x = self.current_frame * self.frame_width
+        cropped = self.sprite_sheet.copy(x, 0, self.frame_width, self.frame_height)
+        self.label.setPixmap(cropped)
+        
+    def next_frame(self):
+        self.current_frame = (self.current_frame + 1) % self.num_frames
+        self.update_frame()
+
+    def follow_window(self):
+        current_hwnd = win32gui.GetForegroundWindow()
+        if self.hwnd_target:
+            rect = win32gui.GetWindowRect(self.hwnd_target)
+            left, top, right, bottom = rect
+            width = right - left
+            height = bottom - top
+
+            self.setGeometry(left, top, width, height)
+            self.setMask(QRegion(0, 0, width, height))
+            
+            self.label.setGeometry(width - self.frame_width - 10, height - self.frame_height - 10, self.frame_width, self.frame_height)
+        if self.hwnd_target == current_hwnd:
+            win32gui.SetWindowPos(
+                self.hwnd_animator,
+                win32con.HWND_TOPMOST,
+                self.x(),
+                self.y(),
+                self.width(),
+                self.height(),
+                win32con.SWP_NOACTIVATE | win32con.SWP_SHOWWINDOW
+            )
+            win32gui.SetWindowPos(
+                self.hwnd_animator,
+                win32con.HWND_NOTOPMOST,
+                0, 0, 0, 0,
+                win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE
+            )
+
+    def process_queue(self):
+        try:
+            while not self.queue.empty():
+                value = self.queue.get_nowait()
+        except Exception as e:
+            print(f"Queue processing error: {e}")
+
+def run_test(queue):
     app = QApplication(sys.argv)
-
-    # 透過PNG画像のパスを指定
-    image_path = "images/001.png"  # ここを透過PNG画像のパスに変更してください
-    widget = TransparentImageWidget(image_path)
-    widget.show()
-
+    animator = SpriteAnimator(
+        sprite_path="src/images/test.png",
+        num_frames=1,
+        queue=queue
+    )
+    animator.show()
     sys.exit(app.exec_())
+    
+if __name__ == "__main__":
+    queue=multiprocessing.Queue()
+    run_test(queue)

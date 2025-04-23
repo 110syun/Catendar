@@ -34,7 +34,7 @@ class SpriteAnimator(QWidget):
         self.frame_height = self.sprite_sheet.height()
         
         self.label = QLabel(self)
-        self.label.setGeometry(width - self.frame_width + 100, height - self.frame_height - 10, self.frame_width, self.frame_height)
+        self.label.setGeometry(-100, height - self.frame_height - 10, self.frame_width, self.frame_height)
         
         self.update_frame()
 
@@ -106,6 +106,9 @@ class SpriteAnimator(QWidget):
             
     def update_animation(self):
         if self.active:
+            if not self.semiactive:
+                self.semiactive = True
+                self.label.setGeometry(-100, self.height() - self.frame_height - 10, self.frame_width, self.frame_height)
             destination_x = (self.width() - self.frame_width - 10)
             destination = QPoint(destination_x, self.label.y())
             start_pos = self.label.pos()
@@ -163,7 +166,6 @@ class WidgetManager:
             self.widgets[hwnd].show()
         if self.off_screen:
             self.widgets[hwnd].active = True
-            self.widgets[hwnd].semiactive = True
             self.off_screen = False
 
     def run_test(self):

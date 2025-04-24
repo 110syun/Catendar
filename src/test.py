@@ -7,12 +7,12 @@ import win32gui
 import win32con
 
 class SpriteAnimator(QWidget):
-    def __init__(self, sprite_path, num_frames, queue):
+    def __init__(self, sprite_path, num_frames, queue, target_hwnd):
         super().__init__()
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         
-        self.hwnd_target = win32gui.GetForegroundWindow()
+        self.hwnd_target = target_hwnd
         self.target_rect = win32gui.GetWindowRect(self.hwnd_target)
         
         left, top, right, bottom = self.target_rect

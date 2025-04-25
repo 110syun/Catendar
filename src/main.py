@@ -5,6 +5,7 @@ import time
 import os
 import multiprocessing
 from watcher import Watcher
+from widget_manager import WidgetManager
 
 def cleanup(watcher):
     data = [category.to_dict() for category in watcher.categories]
@@ -17,8 +18,8 @@ def cleanup(watcher):
             f.write(f"app: {timestamp['app']}, category: {timestamp['category']}, start: {timestamp['start']}, end: {timestamp['end']}\n")
 
 def start_test_subprocess(queue):
-    from test2 import run_test
-    run_test(queue)
+    manager = WidgetManager(queue)
+    manager.run_widget_manager()
 
 def main():
     try:

@@ -1,10 +1,9 @@
-from test import SpriteAnimator
 import sys
 from PyQt5.QtWidgets import QApplication, QLabel, QWidget
 from PyQt5.QtGui import QPixmap, QRegion
 from PyQt5.QtCore import QTimer, Qt, QPoint, QPropertyAnimation, QEasingCurve, pyqtSlot, QObject
 from transparent_window import TransparentWindow
-from sprite_animator import SpriteAnimator
+from sprite_manager import SpriteManager
 import time
 import multiprocessing
 import win32gui
@@ -23,6 +22,7 @@ class WidgetManager(QObject):
         self.current_window_hwnd = None
         self.current_animator_hwnd = None
         self.before_destination_x = None
+        self.berore_destination_y = None
 
     def get_foreground_window(self):
         hwnd = win32gui.GetForegroundWindow()
@@ -41,13 +41,12 @@ class WidgetManager(QObject):
             manager = self
             )
             if not self.animator:   
-                self.animator = SpriteAnimator(
-                    sprite_path="src/images/test.png",
-                    num_frames=1,
+                self.animator = SpriteManager(
                     manager = self
                 )
                 self.animator.setParent(self.widgets[self.current_window_hwnd])
                 self.current_animator_hwnd = self.current_window_hwnd
+                self.animator.change_sprite("cat_sit_f.png")
                 self.animator.setGeometry(
                     -100,
                     self.widgets[self.current_window_hwnd].height() - self.animator.frame_height - 10,
@@ -64,12 +63,13 @@ class WidgetManager(QObject):
         if self.current_animator_hwnd != self.current_window_hwnd:
             self.heading_off_screen(self.widgets[self.current_animator_hwnd])
         else:
+            self.animator.move(self.animator.x(), self.widgets[self.current_animator_hwnd].height() - self.animator.frame_height - 10)
             self.heading_bottom_left(self.widgets[self.current_animator_hwnd])
             
 
     def heading_bottom_left(self, widget):
         destination_x = (widget.width() - self.animator.frame_width - 10)
-        if destination_x != self.before_destination_x:
+        if destination_x != self.before_destination_x or self.animator.y() != self.berore_destination_y:
             win32gui.SetWindowPos(
                 self.widgets[self.current_animator_hwnd].hwnd_self,
                 win32con.HWND_TOPMOST,
@@ -80,40 +80,48 @@ class WidgetManager(QObject):
                 win32con.SWP_NOACTIVATE | win32con.SWP_SHOWWINDOW
             )
             QTimer.singleShot(100, self.not_p_most)
-            print("go!")
             self.was_stopped = True
             self.off_screen = False
             self.animation.stop()
             destination = QPoint(destination_x, self.animator.y())
             start_pos = self.animator.pos()
             distance = abs(destination_x - self.animator.x())
+            if destination_x > self.animator.x():
+                self.animator.change_sprite("cat_walk_r.png")
+            else:
+                self.animator.change_sprite("cat_walk_l.png")
             duration = distance / self.speed_per_second * 1000
             self.animation.setStartValue(start_pos)
             self.animation.setEndValue(destination)
             self.animation.setDuration(int(duration))
             self.was_stopped = False
             self.before_destination_x = destination_x
+            self.berore_destination_y = self.animator.y()
             self.animation.start()
 
     def heading_off_screen(self, widget):
         destination_x = (widget.width() - self.animator.frame_width + 100)
-        if destination_x != self.before_destination_x:
-            print("good by!")
+        if destination_x != self.before_destination_x or self.animator.y() != self.berore_destination_y:
             self.was_stopped = True
             self.off_screen = True
             self.animation.stop()
             destination = QPoint(destination_x, self.animator.y())
             start_pos = self.animator.pos()
             distance = abs(destination_x - self.animator.x())
+            if destination_x > self.animator.x():
+                self.animator.change_sprite("cat_walk_r.png")
+            else:
+                self.animator.change_sprite("cat_walk_l.png")
             duration = distance / self.speed_per_second * 1000
             self.animation.setStartValue(start_pos)
             self.animation.setEndValue(destination)
             self.animation.setDuration(int(duration))
             self.was_stopped = False
             self.before_destination_x = destination_x
+            self.berore_destination_y = self.animator.y()
             self.animation.start()
         
-    def run_test(self):
+    def run_widget_manager(self):
         app = QApplication(sys.argv)
         timer = QTimer()
         timer.timeout.connect(self.get_foreground_window)
@@ -130,6 +138,7 @@ class WidgetManager(QObject):
     
     @pyqtSlot()
     def on_animation_finished(self):
+        self.animator.change_sprite("cat_sit_f.png")
         if not self.was_stopped and self.off_screen:
             self.off_screen = False
             self.animator.setParent(self.widgets[self.current_window_hwnd])
@@ -146,4 +155,4 @@ class WidgetManager(QObject):
 if __name__ == "__main__":
     queue=multiprocessing.Queue()
     manager = WidgetManager(queue)
-    manager.run_test()
+    manager.run_widget_manager()

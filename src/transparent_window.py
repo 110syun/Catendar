@@ -42,6 +42,3 @@ class TransparentWindow(QWidget):
 
             self.setGeometry(left, top, width, height)
             self.setMask(QRegion(0, 0, width, height))
-        else:
-            del self.manager.widgets[self.hwnd_target]
-            self.deleteLater()

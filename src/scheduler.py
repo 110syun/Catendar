@@ -128,7 +128,7 @@ class Scheduler:
             on_close()
 
         def on_close():
-            self.timekeeper = Timekeeper(self)
+            self.timekeeper = Timekeeper(self, self.watcher.queue)
             threading.Thread(target=self.timekeeper.main, daemon=True).start()
             self.win.withdraw()
         self.win.protocol("WM_DELETE_WINDOW", validate_time_format)

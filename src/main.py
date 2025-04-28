@@ -61,9 +61,6 @@ def main():
     )
     process.start()
 
-    queue.put("start_animation")
-    queue.put("stop_animation")
-
     watcher.update_window_name()
     process.join()
 

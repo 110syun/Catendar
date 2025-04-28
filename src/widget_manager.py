@@ -9,6 +9,7 @@ import multiprocessing
 import win32gui
 import win32con
 import pywintypes
+import ctypes
 
 class WidgetManager(QObject):
     def __init__(self, queue):
@@ -23,6 +24,12 @@ class WidgetManager(QObject):
         self.current_animator_hwnd = None
         self.before_destination_x = None
         self.berore_destination_y = None
+        self.visible = False
+        
+    def start_timers(self):
+        self.queue_timer = QTimer()
+        self.queue_timer.timeout.connect(self.process_queue)
+        self.queue_timer.start(50)
 
     def get_foreground_window(self):
         hwnd = win32gui.GetForegroundWindow()
@@ -53,7 +60,10 @@ class WidgetManager(QObject):
                     self.animator.frame_width,
                     self.animator.frame_height
                 )
-                self.animator.show()
+                if self.visible:
+                    self.animator.show()
+                else:
+                    self.animator.hide()
                 self.animation = QPropertyAnimation(self.animator, b"pos")
                 self.animation.setEasingCurve(QEasingCurve.Linear)
                 self.animation.finished.connect(self.on_animation_finished)
@@ -65,7 +75,6 @@ class WidgetManager(QObject):
         else:
             self.animator.move(self.animator.x(), self.widgets[self.current_animator_hwnd].height() - self.animator.frame_height - 10)
             self.heading_bottom_left(self.widgets[self.current_animator_hwnd])
-            
 
     def heading_bottom_left(self, widget):
         destination_x = (widget.width() - self.animator.frame_width - 10)
@@ -73,11 +82,8 @@ class WidgetManager(QObject):
             win32gui.SetWindowPos(
                 self.widgets[self.current_animator_hwnd].hwnd_self,
                 win32con.HWND_TOPMOST,
-                self.widgets[self.current_animator_hwnd].x(),
-                self.widgets[self.current_animator_hwnd].y(),
-                self.widgets[self.current_animator_hwnd].width(),
-                self.widgets[self.current_animator_hwnd].height(),
-                win32con.SWP_NOACTIVATE | win32con.SWP_SHOWWINDOW
+                0, 0, 0, 0,
+                win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE
             )
             QTimer.singleShot(100, self.not_p_most)
             self.was_stopped = True
@@ -125,16 +131,37 @@ class WidgetManager(QObject):
         app = QApplication(sys.argv)
         timer = QTimer()
         timer.timeout.connect(self.get_foreground_window)
-        timer.start(10)
+        timer.start(100)
+        self.start_timers()
         sys.exit(app.exec_())
     
     def not_p_most(self):
-        win32gui.SetWindowPos(
-            self.widgets[self.current_animator_hwnd].hwnd_self,
+        hwnd = self.widgets[self.current_animator_hwnd].hwnd_self
+        result = win32gui.SetWindowPos(
+            hwnd,
             win32con.HWND_NOTOPMOST,
             0, 0, 0, 0,
-            win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE
+            win32con.SWP_NOMOVE | win32con.SWP_NOSIZE
         )
+        error_code = ctypes.GetLastError()
+        if not result:
+            print(f"SetWindowPos failed with error code: {error_code}")
+        else:
+            print(f"SetWindowPos succeeded for hwnd: {hwnd}")
+        
+    def process_queue(self):
+        try:
+            while not self.queue.empty():
+                value = self.queue.get_nowait()
+                if isinstance(value, int):
+                    if value == 0:
+                        self.animator.hide()
+                        self.visible = False
+                    elif value == 1:
+                        self.animator.show()
+                        self.visible = True
+        except Exception as e:
+            print(f"Queue processing error: {e}")
     
     @pyqtSlot()
     def on_animation_finished(self):
@@ -149,10 +176,12 @@ class WidgetManager(QObject):
                 self.animator.frame_width,
                 self.animator.frame_height
             )
-            self.animator.show()
+            if self.visible:
+                self.animator.show()
             self.heading_bottom_left(self.widgets[self.current_window_hwnd])
 
 if __name__ == "__main__":
     queue=multiprocessing.Queue()
     manager = WidgetManager(queue)
+    manager.visible = True
     manager.run_widget_manager()

@@ -23,8 +23,9 @@ class WidgetManager(QObject):
         self.current_window_hwnd = None
         self.current_animator_hwnd = None
         self.before_destination_x = None
-        self.berore_destination_y = None
+        self.before_destination_y = None
         self.visible = False
+        self.topmost = False
         
     def start_timers(self):
         self.queue_timer = QTimer()
@@ -34,6 +35,11 @@ class WidgetManager(QObject):
     def get_foreground_window(self):
         hwnd = win32gui.GetForegroundWindow()
         if hwnd == 0:
+            return
+        if win32gui.GetParent(hwnd):
+            return
+        style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
+        if style & win32con.WS_POPUP:
             return
         try:
             class_name = win32gui.GetClassName(hwnd)
@@ -72,20 +78,27 @@ class WidgetManager(QObject):
         self.widgets[self.current_window_hwnd].follow_window()
         if self.current_animator_hwnd != self.current_window_hwnd:
             self.heading_off_screen(self.widgets[self.current_animator_hwnd])
+            if self.topmost:
+                self.topmost = False
+                self.not_p_most()
         else:
             self.animator.move(self.animator.x(), self.widgets[self.current_animator_hwnd].height() - self.animator.frame_height - 10)
             self.heading_bottom_left(self.widgets[self.current_animator_hwnd])
 
+        if not win32gui.IsWindow(self.widgets[self.current_animator_hwnd].target_hwnd):
+            self.off_screen
+            self.on_animation_finished()
+
     def heading_bottom_left(self, widget):
         destination_x = (widget.width() - self.animator.frame_width - 10)
-        if destination_x != self.before_destination_x or self.animator.y() != self.berore_destination_y:
+        if destination_x != self.before_destination_x or self.animator.y() != self.before_destination_y:
             win32gui.SetWindowPos(
-                self.widgets[self.current_animator_hwnd].hwnd_self,
+                self.widgets[self.current_animator_hwnd].hwnd,
                 win32con.HWND_TOPMOST,
                 0, 0, 0, 0,
-                win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE
+                win32con.SWP_NOMOVE | win32con.SWP_NOSIZE
             )
-            QTimer.singleShot(100, self.not_p_most)
+            self.topmost = True
             self.was_stopped = True
             self.off_screen = False
             self.animation.stop()
@@ -102,12 +115,12 @@ class WidgetManager(QObject):
             self.animation.setDuration(int(duration))
             self.was_stopped = False
             self.before_destination_x = destination_x
-            self.berore_destination_y = self.animator.y()
+            self.before_destination_y = self.animator.y()
             self.animation.start()
 
     def heading_off_screen(self, widget):
         destination_x = (widget.width() - self.animator.frame_width + 100)
-        if destination_x != self.before_destination_x or self.animator.y() != self.berore_destination_y:
+        if destination_x != self.before_destination_x or self.animator.y() != self.before_destination_y:
             self.was_stopped = True
             self.off_screen = True
             self.animation.stop()
@@ -124,30 +137,23 @@ class WidgetManager(QObject):
             self.animation.setDuration(int(duration))
             self.was_stopped = False
             self.before_destination_x = destination_x
-            self.berore_destination_y = self.animator.y()
+            self.before_destination_y = self.animator.y()
             self.animation.start()
-        
-    def run_widget_manager(self):
-        app = QApplication(sys.argv)
-        timer = QTimer()
-        timer.timeout.connect(self.get_foreground_window)
-        timer.start(100)
-        self.start_timers()
-        sys.exit(app.exec_())
     
     def not_p_most(self):
-        hwnd = self.widgets[self.current_animator_hwnd].hwnd_self
-        result = win32gui.SetWindowPos(
+        hwnd = self.widgets[self.current_animator_hwnd].hwnd
+        win32gui.SetWindowPos(
             hwnd,
             win32con.HWND_NOTOPMOST,
             0, 0, 0, 0,
             win32con.SWP_NOMOVE | win32con.SWP_NOSIZE
         )
-        error_code = ctypes.GetLastError()
-        if not result:
-            print(f"SetWindowPos failed with error code: {error_code}")
-        else:
-            print(f"SetWindowPos succeeded for hwnd: {hwnd}")
+        win32gui.SetWindowPos(
+            hwnd,
+            self.current_window_hwnd,
+            0, 0, 0, 0,
+            win32con.SWP_NOMOVE | win32con.SWP_NOSIZE
+        )
         
     def process_queue(self):
         try:
@@ -162,10 +168,18 @@ class WidgetManager(QObject):
                         self.visible = True
         except Exception as e:
             print(f"Queue processing error: {e}")
-    
+        
+    def run_widget_manager(self):
+        app = QApplication(sys.argv)
+        timer = QTimer()
+        timer.timeout.connect(self.get_foreground_window)
+        timer.start(10)
+        self.start_timers()
+        sys.exit(app.exec_())
+
     @pyqtSlot()
     def on_animation_finished(self):
-        self.animator.change_sprite("cat_sit_f.png")
+        self.animator.change_sprite("cat_walk2sit.png", "cat_sit_f.png")
         if not self.was_stopped and self.off_screen:
             self.off_screen = False
             self.animator.setParent(self.widgets[self.current_window_hwnd])

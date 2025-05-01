@@ -1,10 +1,15 @@
 import tkinter as tk
+import os
 from datetime import datetime
 from spreadsheet_manager import GoogleSpreadsheetManager
 
 class SelfCheckEditor:
     def __init__(self):
-        JSON_KEYFILE = "client_secret.json"
+        if os.path.exists("client_secret.json"):
+            JSON_KEYFILE = "client_secret.json"
+        else:
+            self.manager = None
+            return
         SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1NngcnXZGm_kWHHPRmA95seKWpKkF3pFmQT0XFGtp02k/edit?usp=drive_link"
         self.checklist = ["睡眠","食事","運動","ストレス","今の気分","不安","心穏やか","誰とでも話せる","体の動き","集中力","体調","自分を信頼","他人を信頼","他人からの信頼"]
 
@@ -33,6 +38,8 @@ class SelfCheckEditor:
         self.manager.edit_cell(self.YM, 36, 2, self.month)
 
     def start_self_check(self, root):
+        if not self.manager:
+            return
         if root:
             self.win = tk.Toplevel(root)
         else:

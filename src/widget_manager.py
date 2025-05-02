@@ -8,7 +8,10 @@ import time
 import multiprocessing
 import win32gui
 import win32con
+import win32process
 import pywintypes
+import os
+import psutil
 import ctypes
 
 class WidgetManager(QObject):
@@ -16,7 +19,6 @@ class WidgetManager(QObject):
         super().__init__()
         self.queue = queue
         self.widgets = {}
-        self.animator = None
         self.off_screen = False
         self.speed_per_second = 100
         self.was_stopped = False
@@ -26,17 +28,44 @@ class WidgetManager(QObject):
         self.before_destination_y = None
         self.visible = False
         self.topmost = False
-        
+
     def start_timers(self):
         self.queue_timer = QTimer()
         self.queue_timer.timeout.connect(self.process_queue)
         self.queue_timer.start(50)
-
+    
+    def start_animation(self):
+        self.animator = SpriteManager(
+            manager = self
+        )
+        self.animator.change_sprite("cat_sit_f.png")
+        self.animation = QPropertyAnimation(self.animator, b"pos")
+        self.animation.setEasingCurve(QEasingCurve.Linear)
+        self.animation.finished.connect(self.on_animation_finished)
+    
+    def is_own_or_parent_process(self, hwnd):
+        try:
+            _, process_id = win32process.GetWindowThreadProcessId(hwnd)
+            current_process_id = os.getpid()
+            parent_process_id = psutil.Process(current_process_id).ppid()
+            
+            if process_id == current_process_id:
+                return True
+            elif process_id == parent_process_id:
+                return True
+            else:
+                return False
+        except Exception as e:
+            print(f"Error: {e}")
+            return True
+        
     def get_foreground_window(self):
         hwnd = win32gui.GetForegroundWindow()
         if hwnd == 0:
             return
         if win32gui.GetParent(hwnd):
+            return
+        if self.is_own_or_parent_process(hwnd):
             return
         style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
         if style & win32con.WS_POPUP:
@@ -53,26 +82,19 @@ class WidgetManager(QObject):
             target_hwnd=self.current_window_hwnd,
             manager = self
             )
-            if not self.animator:   
-                self.animator = SpriteManager(
-                    manager = self
-                )
+            if not self.current_animator_hwnd:
+                if self.visible:
+                    self.animator.show()
+                else:
+                    self.animator.hide()
                 self.animator.setParent(self.widgets[self.current_window_hwnd])
                 self.current_animator_hwnd = self.current_window_hwnd
-                self.animator.change_sprite("cat_sit_f.png")
                 self.animator.setGeometry(
                     -100,
                     self.widgets[self.current_window_hwnd].height() - self.animator.frame_height - 10,
                     self.animator.frame_width,
                     self.animator.frame_height
                 )
-                if self.visible:
-                    self.animator.show()
-                else:
-                    self.animator.hide()
-                self.animation = QPropertyAnimation(self.animator, b"pos")
-                self.animation.setEasingCurve(QEasingCurve.Linear)
-                self.animation.finished.connect(self.on_animation_finished)
                 self.heading_bottom_left(self.widgets[self.current_window_hwnd])
             self.widgets[self.current_window_hwnd].show()
         self.widgets[self.current_window_hwnd].follow_window()
@@ -164,8 +186,9 @@ class WidgetManager(QObject):
                         self.animator.hide()
                         self.visible = False
                     elif value == 1:
-                        self.animator.show()
                         self.visible = True
+                        if self.current_animator_hwnd:
+                            self.animator.show()
         except Exception as e:
             print(f"Queue processing error: {e}")
         
@@ -175,6 +198,7 @@ class WidgetManager(QObject):
         timer.timeout.connect(self.get_foreground_window)
         timer.start(10)
         self.start_timers()
+        self.start_animation()
         sys.exit(app.exec_())
 
     @pyqtSlot()

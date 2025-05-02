@@ -3,3 +3,6 @@ preset/
 log/
 categories.json
 client_secret.json
+main.spec
+build/
+dist/

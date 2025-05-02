@@ -9,12 +9,12 @@ class SpriteManager(QLabel):
         self.manager = manager
         self.sprites = {}
         self.sprite_data = [
-            ["src/images/cat_sit_f.png", 4, 200],
-            ["src/images/cat_walk_b.png", 3, 200],
-            ["src/images/cat_walk_f.png", 3, 200],
-            ["src/images/cat_walk_l.png", 6, 100],
-            ["src/images/cat_walk_r.png", 6, 100],
-            ["src/images/cat_walk2sit.png", 4, 100]]
+            ["images/cat_sit_f.png", 4, 200],
+            ["images/cat_walk_b.png", 3, 200],
+            ["images/cat_walk_f.png", 3, 200],
+            ["images/cat_walk_l.png", 6, 100],
+            ["images/cat_walk_r.png", 6, 100],
+            ["images/cat_walk2sit.png", 4, 100]]
         self.sprite_sheet = None
         self.num_frames = None
         self.current_frame = None

@@ -1,10 +1,9 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QLabel, QWidget
 from PyQt5.QtGui import QPixmap, QRegion
-from PyQt5.QtCore import QTimer, Qt, QPoint, QPropertyAnimation, QEasingCurve, pyqtSlot, QObject
+from PyQt5.QtCore import QTimer, Qt, QPoint, QPropertyAnimation, QEasingCurve, pyqtSlot, QObject, QAbstractAnimation
 from transparent_window import TransparentWindow
 from sprite_manager import SpriteManager
-import time
 import multiprocessing
 import win32gui
 import win32con
@@ -12,7 +11,6 @@ import win32process
 import pywintypes
 import os
 import psutil
-import ctypes
 
 class WidgetManager(QObject):
     def __init__(self, queue):
@@ -189,6 +187,9 @@ class WidgetManager(QObject):
                         self.visible = True
                         if self.current_animator_hwnd:
                             self.animator.show()
+                elif isinstance(value, str):
+                    if self.animation.state() == QAbstractAnimation.Stopped:
+                        self.animator.change_sprite(value)
         except Exception as e:
             print(f"Queue processing error: {e}")
         

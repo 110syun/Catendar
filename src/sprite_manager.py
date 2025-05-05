@@ -1,7 +1,8 @@
 from PyQt5.QtWidgets import QLabel
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtCore import QTimer
 from sprite import Sprite
+from pathlib import Path
 import os
 class SpriteManager(QLabel):
     def __init__(self, manager):
@@ -10,11 +11,13 @@ class SpriteManager(QLabel):
         self.sprites = {}
         self.sprite_data = [
             ["images/cat_sit_f.png", 4, 200],
+            ["images/cat_walk2sit.png", 4, 100],
+            ["images/cat_walk_a.png", 3, 200],
             ["images/cat_walk_b.png", 3, 200],
             ["images/cat_walk_f.png", 3, 200],
             ["images/cat_walk_l.png", 6, 100],
             ["images/cat_walk_r.png", 6, 100],
-            ["images/cat_walk2sit.png", 4, 100]]
+            ["images/cat_sleep.png", 4, 150]]
         self.sprite_sheet = None
         self.num_frames = None
         self.current_frame = None
@@ -49,12 +52,18 @@ class SpriteManager(QLabel):
         self.sprites[filename] = Sprite(sprite_path, num_frames, frame_time)    
     
     def change_sprite(self, filename, next_filename = None):
-        self.timer.stop()
+        file_path = Path("images/" + filename)
+        if not file_path.exists():
+            return
         if next_filename:
+            next_file_path = Path("images/" + next_filename)
+            if not next_file_path:
+                return
             self.single_shot = True
             self.next_filename = next_filename
         else:
             self.single_shot = False
+        self.timer.stop()
         sprite = self.sprites[filename]
         self.sprite_sheet = QPixmap(sprite.sprite_path)
         self.num_frames = sprite.num_frames

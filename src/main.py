@@ -59,10 +59,9 @@ def main():
         target=start_test_subprocess,
         args=(queue,)
     )
+    process.daemon = True
     process.start()
-
     watcher.update_window_name()
-    process.join()
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()

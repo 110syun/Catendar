@@ -62,6 +62,6 @@ if __name__ == "__main__":
         target=start_test_subprocess,
         args=(queue,)
     )
+    process.daemon = True
     process.start()
     operation_checker.create_main_window()
-    process.join()

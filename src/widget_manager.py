@@ -26,6 +26,10 @@ class WidgetManager(QObject):
         self.before_destination_y = None
         self.visible = False
         self.topmost = False
+        self.image_data = [
+            ["images/bed-blue.png"],
+            ["images/bed-pink.png"],
+            ["images/bed-white.png"]]
 
     def start_timers(self):
         self.queue_timer = QTimer()
@@ -36,6 +40,11 @@ class WidgetManager(QObject):
         self.animator = SpriteManager(
             manager = self
         )
+        self.bed_image = QLabel()
+        pixmap = QPixmap("images/bed-blue.png")
+        self.bed_image.setPixmap(pixmap)
+        self.bed_image.resize(pixmap.width(), pixmap.height())
+        self.bed_image.hide()
         self.animator.change_sprite("cat_sit_f.png")
         self.animation = QPropertyAnimation(self.animator, b"pos")
         self.animation.setEasingCurve(QEasingCurve.Linear)
@@ -60,8 +69,6 @@ class WidgetManager(QObject):
     def get_foreground_window(self):
         hwnd = win32gui.GetForegroundWindow()
         if hwnd == 0:
-            return
-        if win32gui.GetParent(hwnd):
             return
         if self.is_own_or_parent_process(hwnd):
             return
@@ -103,6 +110,7 @@ class WidgetManager(QObject):
                 self.not_p_most()
         else:
             self.animator.move(self.animator.x(), self.widgets[self.current_animator_hwnd].height() - self.animator.frame_height - 10)
+            self.bed_image.move(self.animator.x(), self.animator.y())
             self.heading_bottom_left(self.widgets[self.current_animator_hwnd])
 
         if not win32gui.IsWindow(self.widgets[self.current_animator_hwnd].target_hwnd):
@@ -111,7 +119,7 @@ class WidgetManager(QObject):
 
     def heading_bottom_left(self, widget):
         destination_x = (widget.width() - self.animator.frame_width - 10)
-        if destination_x != self.before_destination_x or self.animator.y() != self.before_destination_y:
+        if destination_x != self.before_destination_x or (self.animator.y() != self.before_destination_y and self.animation.state() == QAbstractAnimation.Running):
             win32gui.SetWindowPos(
                 self.widgets[self.current_animator_hwnd].hwnd,
                 win32con.HWND_TOPMOST,
@@ -140,7 +148,7 @@ class WidgetManager(QObject):
 
     def heading_off_screen(self, widget):
         destination_x = (widget.width() - self.animator.frame_width + 100)
-        if destination_x != self.before_destination_x or self.animator.y() != self.before_destination_y:
+        if destination_x != self.before_destination_x or (self.animator.y() != self.before_destination_y and self.animation.state() == QAbstractAnimation.Running):
             self.was_stopped = True
             self.off_screen = True
             self.animation.stop()
@@ -201,6 +209,12 @@ class WidgetManager(QObject):
         self.start_timers()
         self.start_animation()
         sys.exit(app.exec_())
+        
+    def show_bed(self):
+        self.bed_image.setParent(self.widgets[self.current_window_hwnd])
+        self.bed_image.move(self.animator.pos())
+        self.bed_image.stackUnder(self.animator)
+        self.bed_image.show()
 
     @pyqtSlot()
     def on_animation_finished(self):

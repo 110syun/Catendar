@@ -72,3 +72,8 @@ class SpriteManager(QLabel):
         self.frame_height = self.sprite_sheet.height()
         self.update_frame()
         self.timer.start(sprite.frame_time)
+        
+        if "sleep" in filename:
+            self.manager.show_bed()
+        else:
+            self.manager.bed_image.hide()

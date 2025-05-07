@@ -112,8 +112,9 @@ class Homescreen:
             editor = SelfCheckEditor()
             editor.start_self_check(root)
 
-        image = Image.new("RGB", (64, 64), (0, 0, 255))
-        icon = Icon("test", image, menu=create_menu())
+        image = Image.open("images/icon.png")
+        icon = Icon("schedule-app", image, menu=create_menu())
+        root.iconbitmap("images/icon.ico")
         threading.Thread(target=icon.run, daemon=True).start()
         create_widgets()
         self.scheduler.openGUI(root)

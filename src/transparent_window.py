@@ -1,9 +1,6 @@
-from test import SpriteAnimator
-import sys
 from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout
 from PyQt5.QtGui import QPixmap, QRegion
 from PyQt5.QtCore import QTimer, Qt, QPoint, QPropertyAnimation, QEasingCurve
-import multiprocessing
 import win32gui
 import win32con
 

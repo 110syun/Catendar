@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QLabel
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt, QAbstractAnimation
 from sprite import Sprite
 from pathlib import Path
 import os
@@ -33,6 +33,11 @@ class SpriteManager(QLabel):
         
         for sprite in self.sprite_data:
             self.create_sprite(sprite[0], sprite[1], sprite[2])
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and self.manager.animation.state() == QAbstractAnimation.Stopped:
+            self.manager.show_option()
+        super().mousePressEvent(event)
 
     def update_frame(self):
         x = self.current_frame * self.frame_width

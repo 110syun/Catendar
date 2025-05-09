@@ -4,6 +4,7 @@ from PyQt5.QtGui import QPixmap, QRegion
 from PyQt5.QtCore import QTimer, Qt, QPoint, QPropertyAnimation, QEasingCurve, pyqtSlot, QObject, QAbstractAnimation
 from transparent_window import TransparentWindow
 from sprite_manager import SpriteManager
+from option_image import OptionImage
 import multiprocessing
 import win32gui
 import win32con
@@ -11,6 +12,7 @@ import win32process
 import pywintypes
 import os
 import psutil
+import math
 
 class WidgetManager(QObject):
     def __init__(self, queue):
@@ -27,9 +29,10 @@ class WidgetManager(QObject):
         self.visible = False
         self.topmost = False
         self.image_data = [
-            ["images/bed-blue.png"],
-            ["images/bed-pink.png"],
-            ["images/bed-white.png"]]
+            "images/bed-blue.png",
+            "images/bed-pink.png",
+            "images/bed-white.png"]
+        self.options = []
 
     def start_timers(self):
         self.queue_timer = QTimer()
@@ -120,6 +123,7 @@ class WidgetManager(QObject):
     def heading_bottom_left(self, widget):
         destination_x = (widget.width() - self.animator.frame_width - 10)
         if destination_x != self.before_destination_x or (self.animator.y() != self.before_destination_y and self.animation.state() == QAbstractAnimation.Running):
+            self.hide_option()
             win32gui.SetWindowPos(
                 self.widgets[self.current_animator_hwnd].hwnd,
                 win32con.HWND_TOPMOST,
@@ -149,6 +153,7 @@ class WidgetManager(QObject):
     def heading_off_screen(self, widget):
         destination_x = (widget.width() - self.animator.frame_width + 100)
         if destination_x != self.before_destination_x or (self.animator.y() != self.before_destination_y and self.animation.state() == QAbstractAnimation.Running):
+            self.hide_option()
             self.was_stopped = True
             self.off_screen = True
             self.animation.stop()
@@ -215,6 +220,28 @@ class WidgetManager(QObject):
         self.bed_image.move(self.animator.pos())
         self.bed_image.stackUnder(self.animator)
         self.bed_image.show()
+        
+    def show_option(self):
+        for i, image_data in enumerate(self.image_data):
+            angle = (math.pi / 2) + ((math.pi / 2) * i / (len(self.image_data) - 1))
+            x = self.animator.x() + 50 * math.cos(angle)
+            y = self.animator.y() - 50 * math.sin(angle)
+            
+            label = OptionImage(self, image_data)
+            label.setParent(self.widgets[self.current_window_hwnd])
+            label.move(int(x), int(y))
+            label.show()
+            self.options.append(label)
+            
+    def hide_option(self):
+        for label in self.options:
+            label.deleteLater()
+        self.options.clear()
+            
+    def change_bed_image(self, image):
+        pixmap = QPixmap(image)
+        self.bed_image.setPixmap(pixmap)
+        self.hide_option()
 
     @pyqtSlot()
     def on_animation_finished(self):

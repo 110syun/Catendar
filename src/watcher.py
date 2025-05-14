@@ -8,7 +8,7 @@ from category import Category
 from homescreen import Homescreen
 
 class Watcher:
-    def __init__(self, categories_data=None, timestamps=None):
+    def __init__(self, queue, categories_data=None, timestamps=None):
         self.c = wmi.WMI()        
         self.categories = []
         self.previous_window = None
@@ -17,6 +17,7 @@ class Watcher:
         self.running = True
         self.timestamps = timestamps if timestamps else []
         self.homescreen = Homescreen(self)
+        self.queue = queue
 
         if categories_data:
             for category_data in categories_data:

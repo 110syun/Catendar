@@ -2,3 +2,7 @@ src/__pycache__
 preset/
 log/
 categories.json
+client_secret.json
+*.spec
+build/
+dist/

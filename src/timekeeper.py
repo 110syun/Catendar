@@ -1,9 +1,8 @@
 import time
 from datetime import datetime
-from tkinter import messagebox
 
 class Timekeeper:
-    def __init__(self, app):
+    def __init__(self, app, queue):
         print("initialize")
         if (app):
             self.scheduler = app
@@ -12,6 +11,7 @@ class Timekeeper:
         self.previous_time = datetime.now()
         self.last = False
         self.running = True
+        self.queue = queue
         for time in self.scheduler.times:
             if self.previous_time > time:
                 self.current_phase += 1
@@ -20,6 +20,7 @@ class Timekeeper:
             self.last = True
 
     def main(self):
+        self.queue.put(1)
         stress = 0
         while self.running:
             now = datetime.now()
@@ -45,3 +46,4 @@ class Timekeeper:
             
     def stop(self):
         self.running = False
+        self.queue.put(0)

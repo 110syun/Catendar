@@ -3,7 +3,9 @@ import atexit
 import json
 import time
 import os
+import multiprocessing
 from watcher import Watcher
+from widget_manager import WidgetManager
 
 def cleanup(watcher):
     data = [category.to_dict() for category in watcher.categories]
@@ -14,6 +16,10 @@ def cleanup(watcher):
     with open(timestamp_filename, "w", encoding="utf-8") as f:
         for timestamp in watcher.timestamps:
             f.write(f"app: {timestamp['app']}, category: {timestamp['category']}, start: {timestamp['start']}, end: {timestamp['end']}\n")
+
+def start_test_subprocess(queue):
+    manager = WidgetManager(queue)
+    manager.run_widget_manager()
 
 def main():
     try:
@@ -43,10 +49,21 @@ def main():
     except FileNotFoundError:
         pass
 
-    watcher = Watcher(categories_data, timestamps)
+    queue = multiprocessing.Queue()
+
+    watcher = Watcher(queue, categories_data, timestamps)
     atexit.register(cleanup, watcher)
     threading.Thread(target=watcher.homescreen.openGUI, daemon=True).start()
+
+    process = multiprocessing.Process(
+        target=start_test_subprocess,
+        args=(queue,)
+    )
+    process.daemon = True
+    process.start()
     watcher.update_window_name()
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
+    multiprocessing.set_start_method("spawn", force=True)
     main()

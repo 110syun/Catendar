@@ -10,23 +10,31 @@ class SpriteManager(QLabel):
         self.manager = manager
         self.sprites = {}
         self.sprite_data = [
-            ["images/cat_sit_f.png", 4, 200],
-            ["images/cat_walk2sit.png", 4, 100],
-            ["images/cat_walk_a.png", 3, 200],
-            ["images/cat_walk_b.png", 3, 200],
-            ["images/cat_walk_f.png", 3, 200],
-            ["images/cat_walk_l.png", 6, 100],
-            ["images/cat_walk_r.png", 6, 100],
-            ["images/cat_sleep.png", 4, 150]]
+            ["images/cat/cat_sit_f.png", 4, 200],
+            ["images/cat/cat_sit_r.png", 3, 200],
+            ["images/cat/cat_sit_l.png", 3, 200],
+            ["images/cat/cat_walk_a.png", 3, 200],
+            ["images/cat/cat_walk_b.png", 3, 200],
+            ["images/cat/cat_walk_f.png", 3, 200],
+            ["images/cat/cat_walk_r.png", 6, 100],
+            ["images/cat/cat_walk_l.png", 6, 100],
+            ["images/cat/cat_sleep_r.png", 4, 150],
+            ["images/cat/cat_sleep_l.png", 4, 150],
+            ["images/cat/cat_walk2sit_f.png", 4, 100],
+            ["images/cat/cat_walk2sit_r.png", 6, 100],
+            ["images/cat/cat_walk2sit_l.png", 6, 100],
+            ["images/cat/cat_sleepstart_r.png", 3, 150],
+            ["images/cat/cat_sleepstart_l.png", 3, 150],
+            ["images/cat/cat_sit2sleep_r.png", 4, 200],
+            ["images/cat/cat_sit2sleep_l.png", 4, 200],
+            ["images/cat/cat_akubi.png", 6, 100]]
         self.sprite_sheet = None
         self.num_frames = None
         self.current_frame = None
         self.frame_width = None
         self.frame_height = None
         
-        self.next_filename = None
-        
-        self.single_shot = False
+        self.animation_queue = []
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.next_frame)
@@ -45,29 +53,20 @@ class SpriteManager(QLabel):
         self.setPixmap(cropped)
 
     def next_frame(self):
-        if self.current_frame == self.num_frames - 1 and self.single_shot:
-            self.change_sprite(self.next_filename)
-            self.next_filename = None
+        if self.current_frame == self.num_frames - 1 and self.animation_queue:
+            next_filename = self.animation_queue.pop(0)
+            self.change_sprite(next_filename)
             return
         self.current_frame = (self.current_frame + 1) % self.num_frames
         self.update_frame()
 
     def create_sprite(self, sprite_path, num_frames, frame_time):
         filename = os.path.basename(sprite_path)
-        self.sprites[filename] = Sprite(sprite_path, num_frames, frame_time)    
+        self.sprites[filename] = Sprite(sprite_path, num_frames, frame_time)
     
-    def change_sprite(self, filename, next_filename = None):
-        file_path = Path("images/" + filename)
-        if not file_path.exists():
-            return
-        if next_filename:
-            next_file_path = Path("images/" + next_filename)
-            if not next_file_path:
-                return
-            self.single_shot = True
-            self.next_filename = next_filename
-        else:
-            self.single_shot = False
+    def change_sprite(self, filename, animation_queue = None):
+        if not animation_queue is None:
+            self.animation_queue = animation_queue
         self.timer.stop()
         sprite = self.sprites[filename]
         self.sprite_sheet = QPixmap(sprite.sprite_path)
@@ -81,4 +80,4 @@ class SpriteManager(QLabel):
         if "sleep" in filename:
             self.manager.show_bed()
         else:
-            self.manager.bed_image.hide()
+            self.manager.bed_image.fade_out()

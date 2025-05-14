@@ -1,10 +1,11 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QLabel, QWidget
+from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QGraphicsOpacityEffect
 from PyQt5.QtGui import QPixmap, QRegion
 from PyQt5.QtCore import QTimer, Qt, QPoint, QPropertyAnimation, QEasingCurve, pyqtSlot, QObject, QAbstractAnimation
 from transparent_window import TransparentWindow
 from sprite_manager import SpriteManager
 from option_image import OptionImage
+from cat_bed import CatBed
 import multiprocessing
 import win32gui
 import win32con
@@ -29,30 +30,37 @@ class WidgetManager(QObject):
         self.visible = False
         self.topmost = False
         self.image_data = [
-            "images/bed-blue.png",
-            "images/bed-pink.png",
-            "images/bed-white.png"]
+            "images/bed/bed-blue.png",
+            "images/bed/bed-pink.png",
+            "images/bed/bed-white.png"]
         self.options = []
+        self.cat_direction = "r"
 
     def start_timers(self):
         self.queue_timer = QTimer()
         self.queue_timer.timeout.connect(self.process_queue)
         self.queue_timer.start(50)
-    
+        
+        self.sleep_timer = QTimer()
+        self.sleep_timer.setSingleShot(True)
+        self.sleep_timer.timeout.connect(lambda: self.animator.change_sprite("cat_sit2sleep_" + self.cat_direction + ".png", ["cat_sleepstart_" + self.cat_direction + ".png", "cat_sleep_" + self.cat_direction + ".png"]))
+
     def start_animation(self):
         self.animator = SpriteManager(
             manager = self
         )
-        self.bed_image = QLabel()
-        pixmap = QPixmap("images/bed-blue.png")
-        self.bed_image.setPixmap(pixmap)
-        self.bed_image.resize(pixmap.width(), pixmap.height())
-        self.bed_image.hide()
-        self.animator.change_sprite("cat_sit_f.png")
+        self.animator.change_sprite("cat_sit_f.png", [])
         self.animation = QPropertyAnimation(self.animator, b"pos")
         self.animation.setEasingCurve(QEasingCurve.Linear)
         self.animation.finished.connect(self.on_animation_finished)
-    
+        
+    def init_accessories(self):
+        self.bed_image = CatBed()
+        pixmap = QPixmap("images/bed/bed-blue.png")
+        self.bed_image.setPixmap(pixmap)
+        self.bed_image.resize(pixmap.width(), pixmap.height())
+        self.bed_image.hide()
+
     def is_own_or_parent_process(self, hwnd):
         try:
             _, process_id = win32process.GetWindowThreadProcessId(hwnd)
@@ -113,7 +121,7 @@ class WidgetManager(QObject):
                 self.not_p_most()
         else:
             self.animator.move(self.animator.x(), self.widgets[self.current_animator_hwnd].height() - self.animator.frame_height - 10)
-            self.bed_image.move(self.animator.x(), self.animator.y())
+            self.bed_image.move(self.bed_image.x(), self.animator.y())
             self.heading_bottom_left(self.widgets[self.current_animator_hwnd])
 
         if not win32gui.IsWindow(self.widgets[self.current_animator_hwnd].target_hwnd):
@@ -123,6 +131,7 @@ class WidgetManager(QObject):
     def heading_bottom_left(self, widget):
         destination_x = (widget.width() - self.animator.frame_width - 10)
         if destination_x != self.before_destination_x or (self.animator.y() != self.before_destination_y and self.animation.state() == QAbstractAnimation.Running):
+            self.sleep_timer.stop()
             self.hide_option()
             win32gui.SetWindowPos(
                 self.widgets[self.current_animator_hwnd].hwnd,
@@ -138,9 +147,10 @@ class WidgetManager(QObject):
             start_pos = self.animator.pos()
             distance = abs(destination_x - self.animator.x())
             if destination_x > self.animator.x():
-                self.animator.change_sprite("cat_walk_r.png")
+                self.cat_direction = "r"
             else:
-                self.animator.change_sprite("cat_walk_l.png")
+                self.cat_direction = "l"
+            self.animator.change_sprite("cat_walk_" + self.cat_direction + ".png", [])
             duration = distance / self.speed_per_second * 1000
             self.animation.setStartValue(start_pos)
             self.animation.setEndValue(destination)
@@ -153,6 +163,7 @@ class WidgetManager(QObject):
     def heading_off_screen(self, widget):
         destination_x = (widget.width() - self.animator.frame_width + 100)
         if destination_x != self.before_destination_x or (self.animator.y() != self.before_destination_y and self.animation.state() == QAbstractAnimation.Running):
+            self.sleep_timer.stop()
             self.hide_option()
             self.was_stopped = True
             self.off_screen = True
@@ -161,9 +172,10 @@ class WidgetManager(QObject):
             start_pos = self.animator.pos()
             distance = abs(destination_x - self.animator.x())
             if destination_x > self.animator.x():
-                self.animator.change_sprite("cat_walk_r.png")
+                self.cat_direction = "r"
             else:
-                self.animator.change_sprite("cat_walk_l.png")
+                self.cat_direction = "l"
+            self.animator.change_sprite("cat_walk_" + self.cat_direction + ".png", [])
             duration = distance / self.speed_per_second * 1000
             self.animation.setStartValue(start_pos)
             self.animation.setEndValue(destination)
@@ -202,7 +214,7 @@ class WidgetManager(QObject):
                             self.animator.show()
                 elif isinstance(value, str):
                     if self.animation.state() == QAbstractAnimation.Stopped:
-                        self.animator.change_sprite(value)
+                        self.animator.change_sprite(value, [])
         except Exception as e:
             print(f"Queue processing error: {e}")
         
@@ -212,14 +224,15 @@ class WidgetManager(QObject):
         timer.timeout.connect(self.get_foreground_window)
         timer.start(10)
         self.start_timers()
+        self.init_accessories()
         self.start_animation()
         sys.exit(app.exec_())
         
     def show_bed(self):
-        self.bed_image.setParent(self.widgets[self.current_window_hwnd])
+        self.bed_image.setParent(self.widgets[self.current_animator_hwnd])
         self.bed_image.move(self.animator.pos())
         self.bed_image.stackUnder(self.animator)
-        self.bed_image.show()
+        self.bed_image.fade_in()
         
     def show_option(self):
         for i, image_data in enumerate(self.image_data):
@@ -228,7 +241,7 @@ class WidgetManager(QObject):
             y = self.animator.y() - 50 * math.sin(angle)
             
             label = OptionImage(self, image_data)
-            label.setParent(self.widgets[self.current_window_hwnd])
+            label.setParent(self.widgets[self.current_animator_hwnd])
             label.move(int(x), int(y))
             label.show()
             self.options.append(label)
@@ -245,7 +258,8 @@ class WidgetManager(QObject):
 
     @pyqtSlot()
     def on_animation_finished(self):
-        self.animator.change_sprite("cat_walk2sit.png", "cat_sit_f.png")
+        self.animator.change_sprite("cat_walk2sit_" + self.cat_direction + ".png", ["cat_sit_" + self.cat_direction + ".png"])
+        self.sleep_timer.start(2000)
         if not self.was_stopped and self.off_screen:
             self.off_screen = False
             self.animator.setParent(self.widgets[self.current_window_hwnd])

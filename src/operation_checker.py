@@ -46,7 +46,7 @@ class OperationChecker:
         self.queue.put("cat_sit_f.png")
 
     def sleep_action(self):
-        self.queue.put("cat_sleep.png")
+        self.queue.put("cat_sleep_r.png")
 
 def start_test_subprocess(queue):
     manager = WidgetManager(queue)

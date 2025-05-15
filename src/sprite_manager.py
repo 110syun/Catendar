@@ -27,7 +27,9 @@ class SpriteManager(QLabel):
             ["images/cat/cat_sleepstart_l.png", 3, 150],
             ["images/cat/cat_sit2sleep_r.png", 4, 200],
             ["images/cat/cat_sit2sleep_l.png", 4, 200],
-            ["images/cat/cat_akubi.png", 6, 100]]
+            ["images/cat/cat_akubi.png", 6, 100],
+            ["images/button/cat_push_r.png", 4, 100],
+            ["images/button/cat_push_l.png", 4, 100]]
         self.sprite_sheet = None
         self.num_frames = None
         self.current_frame = None

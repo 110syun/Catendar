@@ -240,7 +240,11 @@ class WidgetManager(QObject):
         )
         
     def change_state(self):
-        if self.state == 1:
+        if self.state >= 7 and self.animation.state() == QAbstractAnimation.Stopped:
+            self.animator.change_sprite("cat_push_" + self.cat_direction + ".png", [])
+        elif self.state >= 5 and self.animation.state() == QAbstractAnimation.Stopped:
+            self.animator.change_sprite("cat_sit_" + self.cat_direction + ".png", [])
+        elif self.state == 1:
             self.visible = True
             if self.current_animator_hwnd:
                 self.animator.show()
@@ -300,8 +304,12 @@ class WidgetManager(QObject):
 
     @pyqtSlot()
     def on_animation_finished(self):
-        self.animator.change_sprite("cat_walk2sit_" + self.cat_direction + ".png", ["cat_sit_" + self.cat_direction + ".png"])
-        self.sleep_timer.start(2000)
+        if self.state >= 7:
+            self.animator.change_sprite("cat_push_" + self.cat_direction + ".png", [])
+        else:
+            self.animator.change_sprite("cat_walk2sit_" + self.cat_direction + ".png", ["cat_sit_" + self.cat_direction + ".png"])
+            if self.state < 5:
+                self.sleep_timer.start(2000)
         if not self.was_stopped and self.off_screen:
             self.off_screen = False
             self.animator.setParent(self.widgets[self.current_window_hwnd])

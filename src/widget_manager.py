@@ -35,6 +35,7 @@ class WidgetManager(QObject):
             "images/bed/bed-white.png"]
         self.options = []
         self.cat_direction = "r"
+        self.state = 0
 
     def start_timers(self):
         self.queue_timer = QTimer()
@@ -111,7 +112,7 @@ class WidgetManager(QObject):
                     self.animator.frame_width,
                     self.animator.frame_height
                 )
-                self.heading_bottom_left(self.widgets[self.current_window_hwnd])
+                self.destination_check(self.widgets[self.current_window_hwnd])
             self.widgets[self.current_window_hwnd].show()
         self.widgets[self.current_window_hwnd].follow_window()
         if self.current_animator_hwnd != self.current_window_hwnd:
@@ -122,11 +123,17 @@ class WidgetManager(QObject):
         else:
             self.animator.move(self.animator.x(), self.widgets[self.current_animator_hwnd].height() - self.animator.frame_height - 10)
             self.bed_image.move(self.bed_image.x(), self.animator.y())
-            self.heading_bottom_left(self.widgets[self.current_animator_hwnd])
+            self.destination_check(self.widgets[self.current_animator_hwnd])
 
         if not win32gui.IsWindow(self.widgets[self.current_animator_hwnd].target_hwnd):
             self.off_screen
             self.on_animation_finished()
+
+    def destination_check(self, widget):
+        if self.state == 1:
+            self.heading_bottom_left(widget)
+        else:
+            self.heading_center(widget)
 
     def heading_bottom_left(self, widget):
         destination_x = (widget.width() - self.animator.frame_width - 10)
@@ -184,7 +191,39 @@ class WidgetManager(QObject):
             self.before_destination_x = destination_x
             self.before_destination_y = self.animator.y()
             self.animation.start()
-    
+
+    def heading_center(self, widget):
+        destination_x = int((widget.width() / 2 - self.animator.frame_width - 10))
+        if destination_x != self.before_destination_x or (self.animator.y() != self.before_destination_y and self.animation.state() == QAbstractAnimation.Running):
+            self.sleep_timer.stop()
+            self.hide_option()
+            win32gui.SetWindowPos(
+                self.widgets[self.current_animator_hwnd].hwnd,
+                win32con.HWND_TOPMOST,
+                0, 0, 0, 0,
+                win32con.SWP_NOMOVE | win32con.SWP_NOSIZE
+            )
+            self.topmost = True
+            self.was_stopped = True
+            self.off_screen = False
+            self.animation.stop()
+            destination = QPoint(destination_x, self.animator.y())
+            start_pos = self.animator.pos()
+            distance = abs(destination_x - self.animator.x())
+            if destination_x > self.animator.x():
+                self.cat_direction = "r"
+            else:
+                self.cat_direction = "l"
+            self.animator.change_sprite("cat_walk_" + self.cat_direction + ".png", [])
+            duration = distance / self.speed_per_second * 1000
+            self.animation.setStartValue(start_pos)
+            self.animation.setEndValue(destination)
+            self.animation.setDuration(int(duration))
+            self.was_stopped = False
+            self.before_destination_x = destination_x
+            self.before_destination_y = self.animator.y()
+            self.animation.start()
+
     def not_p_most(self):
         hwnd = self.widgets[self.current_animator_hwnd].hwnd
         win32gui.SetWindowPos(
@@ -200,21 +239,24 @@ class WidgetManager(QObject):
             win32con.SWP_NOMOVE | win32con.SWP_NOSIZE
         )
         
+    def change_state(self):
+        if self.state == 1:
+            self.visible = True
+            if self.current_animator_hwnd:
+                self.animator.show()
+        elif self.state == 0:
+            self.animator.hide()
+            self.visible = False
+        
     def process_queue(self):
         try:
             while not self.queue.empty():
                 value = self.queue.get_nowait()
-                if isinstance(value, int):
-                    if value == 0:
-                        self.animator.hide()
-                        self.visible = False
-                    elif value == 1:
-                        self.visible = True
-                        if self.current_animator_hwnd:
-                            self.animator.show()
-                elif isinstance(value, str):
-                    if self.animation.state() == QAbstractAnimation.Stopped:
-                        self.animator.change_sprite(value, [])
+                if isinstance(value, int) and self.state != value:
+                    self.state = value
+                    self.change_state()
+                elif isinstance(value, str) and self.animation.state() == QAbstractAnimation.Stopped:
+                    self.animator.change_sprite(value, [])
         except Exception as e:
             print(f"Queue processing error: {e}")
         
@@ -272,7 +314,7 @@ class WidgetManager(QObject):
             )
             if self.visible:
                 self.animator.show()
-            self.heading_bottom_left(self.widgets[self.current_window_hwnd])
+            self.destination_check(self.widgets[self.current_window_hwnd])
 
 if __name__ == "__main__":
     queue=multiprocessing.Queue()

@@ -11,7 +11,8 @@ class Timekeeper:
         self.last = False
         self.running = True
         self.queue = queue
-        self.excess_time
+        self.excess_time = 0
+        self.over_minutes = 0
         for time in self.scheduler.times:
             if self.previous_time > time:
                 self.current_phase += 1
@@ -32,7 +33,7 @@ class Timekeeper:
             elif current_option == "black list" and current_category in current_listbox.categories or not current_listbox.categories:
                 self.unscheduled_activities()
             else:
-                self.queue.put(2)
+                self.queue.put(1)
             if not self.last and now > self.scheduler.times[self.current_phase]:
                 self.excess_time = 0
                 self.current_phase += 1
@@ -48,8 +49,6 @@ class Timekeeper:
     def unscheduled_activities(self):
         self.excess_time += 1
         if self.excess_time >= 60:
-            self.queue.put(3)
-        elif self.excess_time >= 180:
-            self.queue.put(4)
-        elif self.excess_time >= 300:
-            self.queue.put(5)
+            self.over_minutes += 1
+            self.excess_time = 0
+        self.queue.put(self.over_minutes + 2)

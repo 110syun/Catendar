@@ -17,6 +17,7 @@ class CatBed(QLabel):
         self.anim.setEasingCurve(QEasingCurve.InOutQuad)
         
         self.anim.finished.connect(self._on_animation_finished)
+        self.hide()
 
     def fade_in(self):
         if self._state == "fading_in":

@@ -3,6 +3,7 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import QTimer, Qt, QAbstractAnimation
 from sprite import Sprite
 from pathlib import Path
+import pyautogui
 import os
 class SpriteManager(QLabel):
     def __init__(self, manager):
@@ -59,8 +60,13 @@ class SpriteManager(QLabel):
             next_filename = self.animation_queue.pop(0)
             self.change_sprite(next_filename)
             return
+        is_last_frame = (self.current_frame == self.num_frames - 1)
         self.current_frame = (self.current_frame + 1) % self.num_frames
         self.update_frame()
+        
+        if is_last_frame and hasattr(self, "current_sprite_filename"):
+            if "cat_push" in self.current_sprite_filename:
+                pyautogui.write('A', interval=0)
 
     def create_sprite(self, sprite_path, num_frames, frame_time):
         filename = os.path.basename(sprite_path)
@@ -76,6 +82,7 @@ class SpriteManager(QLabel):
         self.current_frame = 0
         self.frame_width = self.sprite_sheet.width() // self.num_frames
         self.frame_height = self.sprite_sheet.height()
+        self.current_sprite_filename = filename
         self.update_frame()
         self.timer.start(sprite.frame_time)
         

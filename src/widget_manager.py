@@ -36,6 +36,7 @@ class WidgetManager(QObject):
         self.options = []
         self.cat_direction = "r"
         self.state = 0
+        self.is_center = False
 
     def start_timers(self):
         self.queue_timer = QTimer()
@@ -121,7 +122,10 @@ class WidgetManager(QObject):
                 self.topmost = False
                 self.not_p_most()
         else:
-            self.animator.move(self.animator.x(), self.widgets[self.current_animator_hwnd].height() - self.animator.frame_height - 10)
+            if self.is_center:
+                self.animator.move(self.animator.x(), int((self.widgets[self.current_animator_hwnd].height() - self.animator.frame_height - 10) / 2))
+            else:
+                self.animator.move(self.animator.x(), self.widgets[self.current_animator_hwnd].height() - self.animator.frame_height - 10)
             self.bed_image.move(self.bed_image.x(), self.animator.y())
             self.destination_check(self.widgets[self.current_animator_hwnd])
 
@@ -131,9 +135,15 @@ class WidgetManager(QObject):
 
     def destination_check(self, widget):
         if self.state == 1:
-            self.heading_bottom_left(widget)
+            if self.is_center:
+                self.heading_off_screen(widget)
+            else:
+                self.heading_bottom_left(widget)
         else:
-            self.heading_center(widget)
+            if self.is_center:
+                self.heading_center(widget)
+            else:
+                self.heading_off_screen(widget)
 
     def heading_bottom_left(self, widget):
         destination_x = (widget.width() - self.animator.frame_width - 10)
@@ -314,12 +324,22 @@ class WidgetManager(QObject):
             self.off_screen = False
             self.animator.setParent(self.widgets[self.current_window_hwnd])
             self.current_animator_hwnd = self.current_window_hwnd
-            self.animator.setGeometry(
-                -100,
-                self.widgets[self.current_window_hwnd].height() - self.animator.frame_height - 10,
-                self.animator.frame_width,
-                self.animator.frame_height
-            )
+            if self.state == 1:
+                self.animator.setGeometry(
+                    -100,
+                    self.widgets[self.current_window_hwnd].height() - self.animator.frame_height - 10,
+                    self.animator.frame_width,
+                    self.animator.frame_height
+                )
+                self.is_center = False
+            else:
+                self.animator.setGeometry(
+                    -100,
+                    int((self.widgets[self.current_window_hwnd].height() - self.animator.frame_height - 10) / 2),
+                    self.animator.frame_width,
+                    self.animator.frame_height
+                )
+                self.is_center = True
             if self.visible:
                 self.animator.show()
             self.destination_check(self.widgets[self.current_window_hwnd])
@@ -328,4 +348,5 @@ if __name__ == "__main__":
     queue=multiprocessing.Queue()
     manager = WidgetManager(queue)
     manager.visible = True
+    manager.state = 2
     manager.run_widget_manager()

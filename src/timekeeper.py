@@ -23,6 +23,7 @@ class Timekeeper:
     def main(self):
         self.queue.put(1)
         while self.running:
+            time.sleep(1)
             now = datetime.now()
             current_category = self.watcher.previous_category
             frame = self.scheduler.frames[self.current_phase]
@@ -40,7 +41,6 @@ class Timekeeper:
                 if len(self.scheduler.times) <= self.current_phase:
                     self.last = True
             self.previous_time = now
-            time.sleep(1)
             
     def stop(self):
         self.running = False

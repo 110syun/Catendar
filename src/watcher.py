@@ -8,7 +8,8 @@ from category import Category
 from homescreen import Homescreen
 
 class Watcher:
-    def __init__(self, queue, categories_data=None, timestamps=None):
+    def __init__(self, os_name, queue, categories_data=None, timestamps=None):
+        self.os_name = os_name
         self.c = wmi.WMI()        
         self.categories = []
         self.previous_window = None

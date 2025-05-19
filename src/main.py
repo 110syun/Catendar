@@ -4,8 +4,11 @@ import json
 import time
 import os
 import multiprocessing
+import platform
 from watcher import Watcher
 from widget_manager import WidgetManager
+
+os_name = platform.system()
 
 def cleanup(watcher):
     data = [category.to_dict() for category in watcher.categories]
@@ -18,7 +21,7 @@ def cleanup(watcher):
             f.write(f"app: {timestamp['app']}, category: {timestamp['category']}, start: {timestamp['start']}, end: {timestamp['end']}\n")
 
 def start_test_subprocess(queue):
-    manager = WidgetManager(queue)
+    manager = WidgetManager(os_name, queue)
     manager.run_widget_manager()
 
 def main():
@@ -51,7 +54,7 @@ def main():
 
     queue = multiprocessing.Queue()
 
-    watcher = Watcher(queue, categories_data, timestamps)
+    watcher = Watcher(os_name, queue, categories_data, timestamps)
     atexit.register(cleanup, watcher)
     threading.Thread(target=watcher.homescreen.openGUI, daemon=True).start()
 

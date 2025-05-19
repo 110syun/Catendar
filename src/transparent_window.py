@@ -7,6 +7,7 @@ import win32con
 class TransparentWindow(QWidget):
     def __init__(self, target_hwnd, manager):
         super().__init__()
+        self.os_name = manager.os_name
         self.manager = manager
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)

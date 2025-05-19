@@ -16,8 +16,9 @@ import psutil
 import math
 
 class WidgetManager(QObject):
-    def __init__(self, queue):
+    def __init__(self, os_name, queue):
         super().__init__()
+        self.os_name = os_name
         self.queue = queue
         self.widgets = {}
         self.off_screen = False

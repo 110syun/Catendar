@@ -8,6 +8,7 @@ import os
 class SpriteManager(QLabel):
     def __init__(self, manager):
         super().__init__()
+        self.os_name = manager.os_name
         self.manager = manager
         self.sprites = {}
         self.sprite_data = [

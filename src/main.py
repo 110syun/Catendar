@@ -8,6 +8,10 @@ import platform
 from watcher import Watcher
 from widget_manager import WidgetManager
 
+def widget_process_entry(os_name, queue):
+    manager = WidgetManager(os_name, queue)
+    manager.run_widget_manager()
+
 class AppController:
     def __init__(self):
         self.os_name = platform.system()
@@ -48,10 +52,6 @@ class AppController:
             pass
         return timestamps
 
-    def start_widget_process(self):
-        manager = WidgetManager(self.os_name, self.queue)
-        manager.run_widget_manager()
-
     def start(self):
         os.makedirs('log', exist_ok=True)
         os.makedirs('preset', exist_ok=True)
@@ -60,10 +60,11 @@ class AppController:
         timestamps = self.load_timestamps()
 
         self.watcher = Watcher(self, self.queue, categories_data, timestamps)
-        atexit.register(self.cleanup, self.watcher)
+        atexit.register(self.cleanup)
 
         process = multiprocessing.Process(
-            target=self.start_widget_process
+            target=widget_process_entry,
+            args=(self.os_name, self.queue)
         )
         process.daemon = True
         process.start()

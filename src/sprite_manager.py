@@ -3,7 +3,6 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import QTimer, Qt, QAbstractAnimation
 from sprite import Sprite
 from pathlib import Path
-import pyautogui
 import os
 class SpriteManager(QLabel):
     def __init__(self, manager):
@@ -46,6 +45,10 @@ class SpriteManager(QLabel):
         for sprite in self.sprite_data:
             self.create_sprite(sprite[0], sprite[1], sprite[2])
 
+        if self.os_name == "Windows":
+            import pyautogui
+            self.pyautogui = pyautogui
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton and self.manager.animation.state() == QAbstractAnimation.Stopped:
             self.manager.show_option()
@@ -65,9 +68,9 @@ class SpriteManager(QLabel):
         self.current_frame = (self.current_frame + 1) % self.num_frames
         self.update_frame()
         
-        if is_last_frame and hasattr(self, "current_sprite_filename"):
+        if is_last_frame and hasattr(self, "current_sprite_filename") and self.os_name == "Windows":
             if "cat_push" in self.current_sprite_filename:
-                pyautogui.write('A', interval=0)
+                self.pyautogui.write('A', interval=0)
 
     def create_sprite(self, sprite_path, num_frames, frame_time):
         filename = os.path.basename(sprite_path)

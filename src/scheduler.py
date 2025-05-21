@@ -16,6 +16,7 @@ class Scheduler:
         self.entries = []
         self.initialize = True
         self.times = []
+        self.timekeeper = None
 
     def get_listbox_at(self, event):
         for frame in self.frames:
@@ -33,13 +34,13 @@ class Scheduler:
                 listbox.insert(tk.END, f"{category.name}")
 
     def openGUI(self, root):
+        if self.timekeeper:
+            self.timekeeper.stop()
+            self.timekeeper = None
+
         if hasattr(self, "win") and self.win.winfo_exists():
             self.win.deiconify()
             return
-        
-        if hasattr(self, "timekeeper") and self.timekeeper:
-            self.timekeeper.stop()
-            self.timekeeper = None
         
         if root:
             self.win = tk.Toplevel(root)

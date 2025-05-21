@@ -60,6 +60,8 @@ class SpriteManager(QLabel):
         self.setPixmap(cropped)
 
     def next_frame(self):
+        if self.manager.state == 0:
+            return
         if self.current_frame == self.num_frames - 1 and self.animation_queue:
             next_filename = self.animation_queue.pop(0)
             self.change_sprite(next_filename)

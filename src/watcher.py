@@ -1,16 +1,30 @@
 import threading
 import time
-import win32process
-import win32gui
-import wmi
 from item import Item
 from category import Category
 from homescreen import Homescreen
 
 class Watcher:
-    def __init__(self, os_name, queue, categories_data=None, timestamps=None):
-        self.os_name = os_name
-        self.c = wmi.WMI()        
+    def __init__(self, app, queue, categories_data=None, timestamps=None):
+        self.controller = app
+        self.os_name = app.os_name
+
+        if self.os_name == "Windows":
+            import win32process
+            import win32gui
+            import wmi
+            self.win32process = win32process
+            self.win32gui = win32gui
+            self.c = wmi.WMI()
+        elif self.os_name == "Darwin":
+            from AppKit import NSWorkspace
+            from Quartz import CGWindowListCopyWindowInfo, kCGWindowListOptionOnScreenOnly, kCGNullWindowID
+            self.NSWorkspace = NSWorkspace
+            self.CGWindowListCopyWindowInfo = CGWindowListCopyWindowInfo
+            self.kCGWindowListOptionOnScreenOnly = kCGWindowListOptionOnScreenOnly
+            self.kCGNullWindowID = kCGNullWindowID
+
+  
         self.categories = []
         self.previous_window = None
         self.previous_category = None
@@ -33,7 +47,7 @@ class Watcher:
     def get_app_name(self, hwnd):
         exe = None
         try:
-            _, pid = win32process.GetWindowThreadProcessId(hwnd)
+            _, pid = self.win32process.GetWindowThreadProcessId(hwnd)
             for p in self.c.query(f'SELECT Name FROM Win32_Process WHERE ProcessId = {str(pid)}'):
                 exe = p.Name
                 break
@@ -55,10 +69,16 @@ class Watcher:
     def update_window_name(self):
         previous_time = time.time()
         while self.running:
-            hwnd = win32gui.GetForegroundWindow()
             current_time = time.time()
             elapsed_time = current_time - previous_time
-            window_name = self.get_app_name(hwnd)
+
+            if self.os_name == "Windows":
+                hwnd = self.win32gui.GetForegroundWindow()
+                window_name = self.get_app_name(hwnd)
+            elif self.os_name == "Darwin":
+                active_app = self.NSWorkspace.sharedWorkspace().frontmostApplication()
+                window_name = active_app.localizedName()
+
             if window_name:
                 if self.previous_window:
                     self.item_exists(elapsed_time)
@@ -101,3 +121,10 @@ class Watcher:
             listbox = frame[2]
             listbox.remove_category(self.categories[category_index])
         del self.categories[category_index]
+
+if __name__ == "__main__":
+    import platform
+    os_name = platform.system()
+    watcher = Watcher(os_name, None, None, None)
+    threading.Thread(target=watcher.update_window_name, daemon=True).start()
+    watcher.homescreen.openGUI()

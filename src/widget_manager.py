@@ -23,6 +23,7 @@ class WidgetManager(QObject):
         self.before_destination_x = None
         self.before_destination_y = None
         self.visible = False
+        self.visible_bed = False
         self.topmost = False
         self.image_data = [
             "images/bed/bed-blue.png",
@@ -146,7 +147,7 @@ class WidgetManager(QObject):
             self.on_animation_finished()
 
     def destination_check(self, widget):
-        if self.state == 1:
+        if self.state <= 1:
             if self.is_center:
                 self.heading_off_screen(widget)
             else:
@@ -272,8 +273,11 @@ class WidgetManager(QObject):
             self.visible = True
             if self.current_animator_hwnd:
                 self.animator.show()
+                if self.visible_bed:
+                    self.bed_image.fade_in()
         elif self.state == 0:
             self.animator.hide()
+            self.bed_image.hide()
             self.visible = False
         
     def process_queue(self):
@@ -358,7 +362,7 @@ class WidgetManager(QObject):
             self.off_screen = False
             self.animator.setParent(self.widgets[self.current_window_hwnd])
             self.current_animator_hwnd = self.current_window_hwnd
-            if self.state == 1:
+            if self.state <= 1:
                 self.animator.setGeometry(
                     -100,
                     self.widgets[self.current_window_hwnd].height() - self.animator.frame_height - 10,

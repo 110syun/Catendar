@@ -94,5 +94,7 @@ class SpriteManager(QLabel):
         
         if "sleep" in filename:
             self.manager.show_bed()
+            self.manager.visible_bed = True
         else:
             self.manager.bed_image.fade_out()
+            self.manager.visible_bed = False

@@ -10,9 +10,10 @@ import os
 import math
 
 class WidgetManager(QObject):
-    def __init__(self, os_name, queue):
+    def __init__(self, os_name, app_dir, queue):
         super().__init__()
         self.os_name = os_name
+        self.app_dir = app_dir
         self.queue = queue
         self.widgets = {}
         self.off_screen = False
@@ -25,14 +26,17 @@ class WidgetManager(QObject):
         self.visible = False
         self.visible_bed = False
         self.topmost = False
-        self.image_data = [
-            "images/bed/bed-blue.png",
-            "images/bed/bed-pink.png",
-            "images/bed/bed-white.png"]
         self.options = []
         self.cat_direction = "r"
         self.state = 0
         self.is_center = False
+
+        bed_images = [
+            "bed-blue.png",
+            "bed-pink.png",
+            "bed-white.png"]
+        image_dir = os.path.join(self.app_dir, "images", "bed")
+        self.image_data = [os.path.join(image_dir, img) for img in bed_images]
 
         if self.os_name == "Windows":
             import win32gui
@@ -71,7 +75,7 @@ class WidgetManager(QObject):
         
     def init_accessories(self):
         self.bed_image = CatBed()
-        pixmap = QPixmap("images/bed/bed-blue.png")
+        pixmap = QPixmap(self.image_data[0])
         self.bed_image.setPixmap(pixmap)
         self.bed_image.resize(pixmap.width(), pixmap.height())
         self.bed_image.hide()
@@ -386,7 +390,8 @@ if __name__ == "__main__":
     import platform
     os_name = platform.system()
     queue=multiprocessing.Queue()
-    manager = WidgetManager(os_name, queue)
+    manager = WidgetManager(None, queue)
+    manager.os_name = os_name
     manager.visible = True
     manager.state = 2
     manager.run_widget_manager()

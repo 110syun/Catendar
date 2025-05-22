@@ -1,6 +1,7 @@
 import threading
 import tkinter as tk
 import json
+import os
 from datetime import datetime
 from tkinter import filedialog
 from tkinter import messagebox
@@ -12,6 +13,8 @@ class Scheduler:
         if (app):
             self.homescreen = app
             self.watcher = self.homescreen.app
+            self.controller = self.watcher.controller
+            self.app_dir = self.controller.app_dir
         self.frames = []
         self.entries = []
         self.initialize = True
@@ -139,7 +142,7 @@ class Scheduler:
                 title="Save As",
                 defaultextension=".pre",
                 filetypes=[("Text files", "*.pre")],
-                initialdir="./preset"
+                initialdir=os.path.join(self.app_dir, "preset")
             )
             if file_path:
                 data = {
@@ -165,7 +168,7 @@ class Scheduler:
             file_path = filedialog.askopenfilename(
                 title="Select a preset file",
                 filetypes=[("Text files", "*.pre")],
-                initialdir="./preset"
+                initialdir=os.path.join(self.app_dir, "preset")
             )
             if file_path:
                 with open(file_path, "r", encoding="utf-8") as file:

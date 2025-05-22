@@ -1,6 +1,7 @@
 import tkinter as tk
 import threading
 import pystray
+import os
 from pystray import MenuItem as item, Icon
 from PIL import Image
 from category import Category
@@ -14,6 +15,7 @@ class Homescreen:
         self.os_name = app.os_name
         self.app = app
         self.controller = app.controller
+        self.app_dir = self.controller.app_dir
         self.listboxes = []
         self.scheduler = Scheduler(self)
         
@@ -117,13 +119,13 @@ class Homescreen:
                 create_category_frame(category)
                 
         def start_self_check():
-            editor = SelfCheckEditor()
+            editor = SelfCheckEditor(self)
             editor.start_self_check(root)
 
         if self.os_name == "Windows":
-            image = Image.open("images/icon.png")
+            image = Image.open(os.path.join(self.app_dir, "images", "icon.png"))
             icon = Icon("schedule-app", image, menu=create_menu())
-            root.iconbitmap("images/icon.ico")
+            root.iconbitmap(os.path.join(self.app_dir, "images", "icon.ico"))
             threading.Thread(target=icon.run, daemon=True).start()
         create_widgets()
         self.scheduler.openGUI(root)

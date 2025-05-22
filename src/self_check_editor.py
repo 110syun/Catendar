@@ -4,9 +4,11 @@ from datetime import datetime
 from spreadsheet_manager import GoogleSpreadsheetManager
 
 class SelfCheckEditor:
-    def __init__(self):
-        if os.path.exists("client_secret.json"):
-            JSON_KEYFILE = "client_secret.json"
+    def __init__(self, app):
+        self.app = app
+        self.app_dir = self.app.app_dir
+        if os.path.exists(os.path.join(self.app_dir, "client_secret.json")):
+            JSON_KEYFILE = os.path.join(self.app_dir, "client_secret.json")
         else:
             self.manager = None
             return

@@ -9,8 +9,15 @@ class SpriteManager(QLabel):
         super().__init__()
         self.os_name = manager.os_name
         self.manager = manager
+        self.app_dir = self.manager.app_dir
         self.sprites = {}
-        self.sprite_data = [
+        self.sprite_sheet = None
+        self.num_frames = None
+        self.current_frame = None
+        self.frame_width = None
+        self.frame_height = None
+        
+        sprite_images = [
             ["images/cat/cat_sit_f.png", 4, 200],
             ["images/cat/cat_sit_r.png", 3, 200],
             ["images/cat/cat_sit_l.png", 3, 200],
@@ -31,12 +38,11 @@ class SpriteManager(QLabel):
             ["images/cat/cat_akubi.png", 6, 100],
             ["images/button/cat_push_r.png", 4, 100],
             ["images/button/cat_push_l.png", 4, 100]]
-        self.sprite_sheet = None
-        self.num_frames = None
-        self.current_frame = None
-        self.frame_width = None
-        self.frame_height = None
         
+        self.sprite_data = [
+            [os.path.join(self.app_dir, entry[0]), entry[1], entry[2]] for entry in sprite_images
+        ]
+
         self.animation_queue = []
 
         self.timer = QTimer()

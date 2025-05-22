@@ -3,13 +3,14 @@ import atexit
 import json
 import time
 import os
+import sys
 import multiprocessing
 import platform
 from watcher import Watcher
 from widget_manager import WidgetManager
 
-def widget_process_entry(os_name, queue):
-    manager = WidgetManager(os_name, queue)
+def widget_process_entry(os_name, app_dir, queue):
+    manager = WidgetManager(os_name, app_dir, queue)
     manager.run_widget_manager()
 
 class AppController:
@@ -17,20 +18,30 @@ class AppController:
         self.os_name = platform.system()
         self.queue = multiprocessing.Queue()
         self.watcher = None
+        self.app_dir = self.get_app_dir()
+
+    def get_app_dir(self):
+        if getattr(sys, 'frozen', False):
+            return os.path.dirname(sys.executable)
+        else:
+            return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    def get_path(self, filename):
+        return os.path.join(self.app_dir, filename)
 
     def cleanup(self):
         data = [category.to_dict() for category in self.watcher.categories]
-        with open("categories.json", "w", encoding="utf-8") as f:
+        with open(self.get_path("categories.json"), "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
         timestamp_filename = time.strftime('log/%Y-%m-%d') + ".txt"
-        with open(timestamp_filename, "w", encoding="utf-8") as f:
+        with open(self.get_path(timestamp_filename), "w", encoding="utf-8") as f:
             for timestamp in self.watcher.timestamps:
                 f.write(f"app: {timestamp['app']}, category: {timestamp['category']}, start: {timestamp['start']}, end: {timestamp['end']}\n")
 
     def load_categories(self):
         try:
-            with open("categories.json", "r", encoding="utf-8") as f:
+            with open(self.get_path("categories.json"), "r", encoding="utf-8") as f:
                 return json.load(f)
         except FileNotFoundError:
             return None
@@ -39,7 +50,7 @@ class AppController:
         timestamps = []
         timestamp_filename = time.strftime('log/%Y-%m-%d') + ".txt"
         try:
-            with open(timestamp_filename, "r", encoding="utf-8") as f:
+            with open(self.get_path(timestamp_filename), "r", encoding="utf-8") as f:
                 for line in f:
                     app, category, start, end = line.strip().split(", ")
                     timestamps.append({
@@ -53,8 +64,8 @@ class AppController:
         return timestamps
 
     def start(self):
-        os.makedirs('log', exist_ok=True)
-        os.makedirs('preset', exist_ok=True)
+        os.makedirs(self.get_path('log'), exist_ok=True)
+        os.makedirs(self.get_path('preset'), exist_ok=True)
 
         categories_data = self.load_categories()
         timestamps = self.load_timestamps()
@@ -64,7 +75,7 @@ class AppController:
 
         process = multiprocessing.Process(
             target=widget_process_entry,
-            args=(self.os_name, self.queue)
+            args=(self.os_name, self.app_dir , self.queue)
         )
         process.daemon = True
         process.start()

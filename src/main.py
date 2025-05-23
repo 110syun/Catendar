@@ -9,8 +9,8 @@ import platform
 from watcher import Watcher
 from widget_manager import WidgetManager
 
-def widget_process_entry(os_name, app_dir, queue):
-    manager = WidgetManager(os_name, app_dir, queue)
+def widget_process_entry(os_name, queue):
+    manager = WidgetManager(os_name, queue)
     manager.run_widget_manager()
 
 class AppController:
@@ -75,7 +75,7 @@ class AppController:
 
         process = multiprocessing.Process(
             target=widget_process_entry,
-            args=(self.os_name, self.app_dir , self.queue)
+            args=(self.os_name, self.queue)
         )
         process.daemon = True
         process.start()

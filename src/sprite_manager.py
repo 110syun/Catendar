@@ -10,7 +10,7 @@ class SpriteManager(QLabel):
         super().__init__()
         self.os_name = manager.os_name
         self.manager = manager
-        self.app_dir = self.manager.app_dir
+        self.resource_path = self.manager.resource_path
         self.sprites = {}
         self.sprite_sheet = None
         self.num_frames = None
@@ -41,7 +41,7 @@ class SpriteManager(QLabel):
             ["images/button/cat_push_l.png", 4, 100]]
         
         self.sprite_data = [
-            [os.path.join(self.app_dir, entry[0]), entry[1], entry[2]] for entry in sprite_images
+            [os.path.join(self.resource_path, entry[0]), entry[1], entry[2]] for entry in sprite_images
         ]
 
         self.animation_queue = []

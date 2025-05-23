@@ -10,10 +10,9 @@ import os
 import math
 
 class WidgetManager(QObject):
-    def __init__(self, os_name, app_dir, queue):
+    def __init__(self, os_name, queue):
         super().__init__()
         self.os_name = os_name
-        self.app_dir = app_dir
         self.queue = queue
         self.widgets = {}
         self.off_screen = False
@@ -30,12 +29,14 @@ class WidgetManager(QObject):
         self.cat_direction = "r"
         self.state = 0
         self.is_center = False
+        
+        self.resource_path = self.check_resource_path()
 
         bed_images = [
             "bed-blue.png",
             "bed-pink.png",
             "bed-white.png"]
-        image_dir = os.path.join(self.app_dir, "images", "bed")
+        image_dir = os.path.join(self.resource_path, "images", "bed")
         self.image_data = [os.path.join(image_dir, img) for img in bed_images]
 
         if self.os_name == "Windows":
@@ -54,6 +55,11 @@ class WidgetManager(QObject):
         elif self.os_name == "Darwin":
             from transparent_overlay import TransparentOverlay
             self.TransparentOverlay = TransparentOverlay
+    
+    def check_resource_path(self):
+        if hasattr(sys, '_MEIPASS'):
+            return sys._MAEIPASS
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     def start_timers(self):
         self.queue_timer = QTimer()

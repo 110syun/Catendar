@@ -58,7 +58,7 @@ class WidgetManager(QObject):
     
     def check_resource_path(self):
         if hasattr(sys, '_MEIPASS'):
-            return sys._MAEIPASS
+            return sys._MEIPASS
         return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     def start_timers(self):

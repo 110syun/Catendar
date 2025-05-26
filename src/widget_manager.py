@@ -8,11 +8,13 @@ from cat_bed import CatBed
 import multiprocessing
 import os
 import math
+import psutil
 
 class WidgetManager(QObject):
-    def __init__(self, os_name, queue):
+    def __init__(self, os_name, parent_pid, queue):
         super().__init__()
         self.os_name = os_name
+        self.parent_pid = parent_pid
         self.queue = queue
         self.widgets = {}
         self.off_screen = False
@@ -44,13 +46,11 @@ class WidgetManager(QObject):
             import win32con
             import win32process
             import pywintypes
-            import psutil
             from transparent_window import TransparentWindow
             self.win32gui = win32gui
             self.win32con = win32con
             self.win32process = win32process
             self.pywintypes = pywintypes
-            self.psutil = psutil
             self.TransparentWindow = TransparentWindow
         elif self.os_name == "Darwin":
             from transparent_overlay import TransparentOverlay
@@ -90,7 +90,7 @@ class WidgetManager(QObject):
         try:
             _, process_id = self.win32process.GetWindowThreadProcessId(hwnd)
             current_process_id = os.getpid()
-            parent_process_id = self.psutil.Process(current_process_id).ppid()
+            parent_process_id = psutil.Process(current_process_id).ppid()
             
             if process_id == current_process_id:
                 return True
@@ -330,6 +330,15 @@ class WidgetManager(QObject):
             timer = QTimer()
             timer.timeout.connect(lambda: self.destination_check(self.widgets[1]))
             timer.start(100)
+            
+        def pid_check():
+            if not psutil.pid_exists(self.parent_pid):
+                app.quit()
+                
+        self.pid_check_timer = QTimer()
+        self.pid_check_timer.timeout.connect(pid_check)
+        self.pid_check_timer.start(1000)
+                
         sys.exit(app.exec_())
         
     def show_bed(self):

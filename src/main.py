@@ -6,11 +6,12 @@ import os
 import sys
 import multiprocessing
 import platform
+import signal
 from watcher import Watcher
 from widget_manager import WidgetManager
 
-def widget_process_entry(os_name, queue):
-    manager = WidgetManager(os_name, queue)
+def widget_process_entry(os_name, parent_pid, queue):
+    manager = WidgetManager(os_name, parent_pid, queue)
     manager.run_widget_manager()
 
 class AppController:
@@ -62,6 +63,10 @@ class AppController:
         except FileNotFoundError:
             pass
         return timestamps
+    
+    def handle_signal(self, signum, frame):
+        self.cleanup()
+        sys.exit(0)
 
     def start(self):
         os.makedirs(self.get_path('log'), exist_ok=True)
@@ -71,11 +76,13 @@ class AppController:
         timestamps = self.load_timestamps()
 
         self.watcher = Watcher(self, self.queue, categories_data, timestamps)
+        signal.signal(signal.SIGTERM, self.handle_signal)
+        signal.signal(signal.SIGINT, self.handle_signal)
         atexit.register(self.cleanup)
 
         process = multiprocessing.Process(
             target=widget_process_entry,
-            args=(self.os_name, self.queue)
+            args=(self.os_name, os.getpid(), self.queue)
         )
         process.daemon = True
         process.start()

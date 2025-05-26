@@ -61,10 +61,7 @@ class Homescreen:
         def hide_window():
             root.withdraw()
         
-        if self.os_name == "Windows":
-            root.protocol("WM_DELETE_WINDOW", hide_window)
-        elif self.os_name == "Darwin":
-            root.protocol("WM_DELETE_WINDOW", on_closing)
+        root.protocol("WM_DELETE_WINDOW", hide_window)
 
         def rename_category(label, frame, category):
             category_index = self.app.categories.index(category)

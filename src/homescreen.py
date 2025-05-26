@@ -31,6 +31,7 @@ class Homescreen:
                 listbox.delete(0, tk.END)
                 for item in self.app.categories[0].items:
                     listbox.insert(tk.END, f"{item.name}")
+        self.controller.dump_categories_json()
                     
     def get_listbox_at(self, event):
         for listbox in self.listboxes:

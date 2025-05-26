@@ -30,6 +30,11 @@ class AppController:
     def get_path(self, filename):
         return os.path.join(self.app_dir, filename)
 
+    def dump_categories_json(self):
+        data = [category.to_dict() for category in self.watcher.categories]
+        with open(self.get_path("categories.json"), "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+
     def cleanup(self):
         data = [category.to_dict() for category in self.watcher.categories]
         with open(self.get_path("categories.json"), "w", encoding="utf-8") as f:

@@ -18,8 +18,8 @@ class Homescreen:
         self.controller = app.controller
         self.app_dir = self.controller.app_dir
         self.listboxes = []
-        self.scheduler = Scheduler(self)
         self.resource_path = self.check_resource_path()
+        self.scheduler = Scheduler(self)
     
     def check_resource_path(self):
         if hasattr(sys, '_MEIPASS'):

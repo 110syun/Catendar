@@ -52,4 +52,5 @@ class Timekeeper:
         if self.excess_time >= 60:
             self.over_minutes += 1
             self.excess_time = 0
+            self.scheduler.shift_schedule(self.current_phase)
         self.queue.put(self.over_minutes + 2)

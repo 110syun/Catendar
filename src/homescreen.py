@@ -2,6 +2,7 @@ import tkinter as tk
 import threading
 import pystray
 import os
+import sys
 from pystray import MenuItem as item, Icon
 from PIL import Image
 from category import Category
@@ -18,7 +19,13 @@ class Homescreen:
         self.app_dir = self.controller.app_dir
         self.listboxes = []
         self.scheduler = Scheduler(self)
-        
+        self.resource_path = self.check_resource_path()
+    
+    def check_resource_path(self):
+        if hasattr(sys, '_MEIPASS'):
+            return sys._MEIPASS
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
     def update_listbox(self, all):
         if self.listboxes:
             if all:
@@ -121,9 +128,9 @@ class Homescreen:
             editor.start_self_check(root)
 
         if self.os_name == "Windows":
-            image = Image.open(os.path.join(self.app_dir, "images", "icon.png"))
+            image = Image.open(os.path.join(self.resource_path, "images", "icon.png"))
             icon = Icon("schedule-app", image, menu=create_menu())
-            root.iconbitmap(os.path.join(self.app_dir, "images", "icon.ico"))
+            root.iconbitmap(os.path.join(self.resource_path, "images", "icon.ico"))
             threading.Thread(target=icon.run, daemon=True).start()
         create_widgets()
         self.scheduler.openGUI(root)

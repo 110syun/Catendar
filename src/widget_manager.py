@@ -376,7 +376,7 @@ class WidgetManager(QObject):
         else:
             self.animator.change_sprite("cat_walk2sit_" + self.cat_direction + ".png", ["cat_sit_" + self.cat_direction + ".png"])
             if self.state < 5:
-                self.sleep_timer.start(2000)
+                self.sleep_timer.start(60000)
         if not self.was_stopped and self.off_screen:
             self.off_screen = False
             self.animator.setParent(self.widgets[self.current_window_hwnd])

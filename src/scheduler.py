@@ -1,22 +1,52 @@
 import threading
 import tkinter as tk
+from PIL import Image, ImageTk
 import json
-from datetime import datetime
+import os
+from datetime import datetime, timedelta
 from tkinter import filedialog
 from tkinter import messagebox
 from scheduler_listbox import SchedulerListbox
 from timekeeper import Timekeeper
+from lock_toggle_button import LockToggleButton
 
 class Scheduler:
     def __init__(self, app):
-        if (app):
-            self.homescreen = app
-            self.watcher = self.homescreen.app
+        self.homescreen = app
+        self.watcher = self.homescreen.app
+        self.controller = self.watcher.controller
+        self.app_dir = self.controller.app_dir
         self.frames = []
         self.entries = []
         self.initialize = True
         self.times = []
+        self.timekeeper = None
+        self.resource_path = self.homescreen.resource_path
+        
+    def shift_schedule(self, current_phase):
+        if len(self.entries) <= current_phase:
+            return
+        index = current_phase
+        for entry in self.entries[current_phase:]:
+            if entry[3].is_locked:
+                return
+            hour = int(entry[1].get() or 0)
+            minute = int(entry[2].get() or 0)
 
+            minute += 1
+
+            if minute >= 60:
+                minute -= 60
+                hour += 1
+
+            entry[1].delete(0, tk.END)
+            entry[2].delete(0, tk.END)
+            
+            entry[1].insert(0, str(hour))
+            entry[2].insert(0, str(minute))
+            self.time[index] = self.time[index] + timedelta(seconds=1)
+            
+            index += 1
     def get_listbox_at(self, event):
         for frame in self.frames:
             listbox = frame[2]
@@ -33,26 +63,29 @@ class Scheduler:
                 listbox.insert(tk.END, f"{category.name}")
 
     def openGUI(self, root):
+        if self.timekeeper:
+            self.timekeeper.stop()
+            self.timekeeper = None
+
         if hasattr(self, "win") and self.win.winfo_exists():
             self.win.deiconify()
             return
-        
-        if hasattr(self, "timekeeper") and self.timekeeper:
-            self.timekeeper.stop()
-            self.timekeeper = None
         
         if root:
             self.win = tk.Toplevel(root)
         else :
             self.win = tk.Tk()
         self.win.title("Time Scheduler")
+        
+        self.lock_img = ImageTk.PhotoImage(Image.open(os.path.join(self.resource_path, "images", "lock.png")))
+        self.unlock_img = ImageTk.PhotoImage(Image.open(os.path.join(self.resource_path, "images", "unlock.png")))
 
         main_frame = tk.Frame(self.win, bd=2, relief=tk.SUNKEN)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         def create_listbox():
             frame = tk.Frame(main_frame, bd=2, relief=tk.SUNKEN)
-            frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=(40, 5))
+            frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=(56, 5))
 
             options = ["white list", "black list"]
             selected_option = tk.StringVar(value=options[0])
@@ -63,9 +96,13 @@ class Scheduler:
             listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
             self.frames.append([frame, selected_option, listbox])
 
-        def create_entries():
-            frame = tk.Frame(main_frame, bd=2, relief=tk.SUNKEN)
+        def create_entries(is_locked = False):
+            subframe = tk.Frame(main_frame)
+            button = LockToggleButton(subframe, is_locked, self.lock_img, self.unlock_img)
 
+            frame = tk.Frame(subframe, bd=2, relief=tk.SUNKEN)
+            frame.pack(side=tk.TOP)
+            
             hour_entry = tk.Entry(frame, width=5)
             hour_entry.pack(side=tk.LEFT, padx=2, pady=2)
 
@@ -75,7 +112,7 @@ class Scheduler:
             minute_entry = tk.Entry(frame, width=5)
             minute_entry.pack(side=tk.LEFT, padx=2, pady=2)
 
-            self.entries.append([frame, hour_entry, minute_entry])
+            self.entries.append([subframe, hour_entry, minute_entry, button])
 
         def relocation_entries():
             equal_part = len(self.entries) + 1
@@ -138,7 +175,7 @@ class Scheduler:
                 title="Save As",
                 defaultextension=".pre",
                 filetypes=[("Text files", "*.pre")],
-                initialdir="./preset"
+                initialdir=os.path.join(self.app_dir, "preset")
             )
             if file_path:
                 data = {
@@ -152,7 +189,8 @@ class Scheduler:
                     "entries": [
                         {
                             "hour": entry[1].get(),
-                            "minute": entry[2].get()
+                            "minute": entry[2].get(),
+                            "is_locked": entry[3].is_locked
                         }
                         for entry in self.entries
                     ]
@@ -164,7 +202,7 @@ class Scheduler:
             file_path = filedialog.askopenfilename(
                 title="Select a preset file",
                 filetypes=[("Text files", "*.pre")],
-                initialdir="./preset"
+                initialdir=os.path.join(self.app_dir, "preset")
             )
             if file_path:
                 with open(file_path, "r", encoding="utf-8") as file:
@@ -190,11 +228,10 @@ class Scheduler:
                     frame[1].set(frame_data["selected_option"])
 
                 for entry_data in data["entries"]:
-                    create_entries()
+                    create_entries(entry_data["is_locked"])
                     entry = self.entries[-1]
                     entry[1].insert(0, entry_data["hour"])
                     entry[2].insert(0, entry_data["minute"])
-                    
                 self.update_listbox()
                 relocation_entries()
 

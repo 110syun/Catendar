@@ -8,9 +8,17 @@ import os
 class SpriteManager(QLabel):
     def __init__(self, manager):
         super().__init__()
+        self.os_name = manager.os_name
         self.manager = manager
+        self.resource_path = self.manager.resource_path
         self.sprites = {}
-        self.sprite_data = [
+        self.sprite_sheet = None
+        self.num_frames = None
+        self.current_frame = None
+        self.frame_width = None
+        self.frame_height = None
+        
+        sprite_images = [
             ["images/cat/cat_sit_f.png", 4, 200],
             ["images/cat/cat_sit_r.png", 3, 200],
             ["images/cat/cat_sit_l.png", 3, 200],
@@ -31,12 +39,11 @@ class SpriteManager(QLabel):
             ["images/cat/cat_akubi.png", 6, 100],
             ["images/button/cat_push_r.png", 4, 100],
             ["images/button/cat_push_l.png", 4, 100]]
-        self.sprite_sheet = None
-        self.num_frames = None
-        self.current_frame = None
-        self.frame_width = None
-        self.frame_height = None
         
+        self.sprite_data = [
+            [os.path.join(self.resource_path, entry[0]), entry[1], entry[2]] for entry in sprite_images
+        ]
+
         self.animation_queue = []
 
         self.timer = QTimer()
@@ -56,6 +63,8 @@ class SpriteManager(QLabel):
         self.setPixmap(cropped)
 
     def next_frame(self):
+        if self.manager.state == 0:
+            return
         if self.current_frame == self.num_frames - 1 and self.animation_queue:
             next_filename = self.animation_queue.pop(0)
             self.change_sprite(next_filename)
@@ -64,9 +73,8 @@ class SpriteManager(QLabel):
         self.current_frame = (self.current_frame + 1) % self.num_frames
         self.update_frame()
         
-        if is_last_frame and hasattr(self, "current_sprite_filename"):
-            if "cat_push" in self.current_sprite_filename:
-                pyautogui.write('A', interval=0)
+        if is_last_frame and hasattr(self, "current_sprite_filename") and "cat_push" in self.current_sprite_filename:
+            pyautogui.write('A', interval=0)
 
     def create_sprite(self, sprite_path, num_frames, frame_time):
         filename = os.path.basename(sprite_path)
@@ -88,5 +96,7 @@ class SpriteManager(QLabel):
         
         if "sleep" in filename:
             self.manager.show_bed()
+            self.manager.visible_bed = True
         else:
             self.manager.bed_image.fade_out()
+            self.manager.visible_bed = False

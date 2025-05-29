@@ -1,6 +1,8 @@
 import tkinter as tk
 import threading
 import pystray
+import os
+import sys
 from pystray import MenuItem as item, Icon
 from PIL import Image
 from category import Category
@@ -11,10 +13,19 @@ from self_check_editor import SelfCheckEditor
 
 class Homescreen:
     def __init__(self, app):
+        self.os_name = app.os_name
         self.app = app
+        self.controller = app.controller
+        self.app_dir = self.controller.app_dir
         self.listboxes = []
+        self.resource_path = self.check_resource_path()
         self.scheduler = Scheduler(self)
-        
+    
+    def check_resource_path(self):
+        if hasattr(sys, '_MEIPASS'):
+            return sys._MEIPASS
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
     def update_listbox(self, all):
         if self.listboxes:
             if all:
@@ -27,6 +38,7 @@ class Homescreen:
                 listbox.delete(0, tk.END)
                 for item in self.app.categories[0].items:
                     listbox.insert(tk.END, f"{item.name}")
+        self.controller.dump_categories_json()
                     
     def get_listbox_at(self, event):
         for listbox in self.listboxes:
@@ -43,16 +55,19 @@ class Homescreen:
             return (item("ウィンドウを開く", show_gui), item("終了", on_closing))
 
         def on_closing():
-            self.app.running = False
-            icon.stop()
-            root.quit()
+            if self.os_name == "Windows":
+                self.app.running = False
+                icon.stop()
+                root.quit()
+            elif self.os_name == "Darwin":
+                root.quit()
             
         def show_gui():
             root.deiconify()
 
         def hide_window():
             root.withdraw()
-
+        
         root.protocol("WM_DELETE_WINDOW", hide_window)
 
         def rename_category(label, frame, category):
@@ -109,13 +124,14 @@ class Homescreen:
                 create_category_frame(category)
                 
         def start_self_check():
-            editor = SelfCheckEditor()
+            editor = SelfCheckEditor(self)
             editor.start_self_check(root)
 
-        image = Image.open("images/icon.png")
-        icon = Icon("schedule-app", image, menu=create_menu())
-        root.iconbitmap("images/icon.ico")
-        threading.Thread(target=icon.run, daemon=True).start()
+        if self.os_name == "Windows":
+            image = Image.open(os.path.join(self.resource_path, "images", "icon.png"))
+            icon = Icon("schedule-app", image, menu=create_menu())
+            root.iconbitmap(os.path.join(self.resource_path, "images", "icon.ico"))
+            threading.Thread(target=icon.run, daemon=True).start()
         create_widgets()
         self.scheduler.openGUI(root)
         threading.Thread(target=start_self_check, daemon=True).start()

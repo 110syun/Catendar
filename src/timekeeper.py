@@ -22,8 +22,8 @@ class Timekeeper:
 
     def main(self):
         self.queue.put(1)
+        time.sleep(1)
         while self.running:
-            time.sleep(1)
             now = datetime.now()
             current_category = self.watcher.previous_category
             frame = self.scheduler.frames[self.current_phase]
@@ -31,7 +31,7 @@ class Timekeeper:
             current_listbox = frame[2]
             if current_option == "white list" and current_category not in current_listbox.categories and current_listbox.categories:
                 self.unscheduled_activities()
-            elif current_option == "black list" and current_category in current_listbox.categories or not current_listbox.categories:
+            elif current_option == "black list" and (current_category in current_listbox.categories or not current_listbox.categories):
                 self.unscheduled_activities()
             else:
                 self.queue.put(1)
@@ -41,6 +41,7 @@ class Timekeeper:
                 if len(self.scheduler.times) <= self.current_phase:
                     self.last = True
             self.previous_time = now
+            time.sleep(1)
             
     def stop(self):
         self.running = False
@@ -51,4 +52,5 @@ class Timekeeper:
         if self.excess_time >= 60:
             self.over_minutes += 1
             self.excess_time = 0
+            self.scheduler.shift_schedule(self.current_phase)
         self.queue.put(self.over_minutes + 2)

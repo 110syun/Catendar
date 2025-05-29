@@ -2,22 +2,19 @@ import sys
 from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QGraphicsOpacityEffect
 from PyQt5.QtGui import QPixmap, QRegion
 from PyQt5.QtCore import QTimer, Qt, QPoint, QPropertyAnimation, QEasingCurve, pyqtSlot, QObject, QAbstractAnimation
-from transparent_window import TransparentWindow
 from sprite_manager import SpriteManager
 from option_image import OptionImage
 from cat_bed import CatBed
 import multiprocessing
-import win32gui
-import win32con
-import win32process
-import pywintypes
 import os
-import psutil
 import math
+import psutil
 
 class WidgetManager(QObject):
-    def __init__(self, queue):
+    def __init__(self, os_name, parent_pid, queue):
         super().__init__()
+        self.os_name = os_name
+        self.parent_pid = parent_pid
         self.queue = queue
         self.widgets = {}
         self.off_screen = False
@@ -28,15 +25,41 @@ class WidgetManager(QObject):
         self.before_destination_x = None
         self.before_destination_y = None
         self.visible = False
+        self.visible_bed = False
         self.topmost = False
-        self.image_data = [
-            "images/bed/bed-blue.png",
-            "images/bed/bed-pink.png",
-            "images/bed/bed-white.png"]
         self.options = []
         self.cat_direction = "r"
         self.state = 0
         self.is_center = False
+        
+        self.resource_path = self.check_resource_path()
+
+        bed_images = [
+            "bed-blue.png",
+            "bed-pink.png",
+            "bed-white.png"]
+        image_dir = os.path.join(self.resource_path, "images", "bed")
+        self.image_data = [os.path.join(image_dir, img) for img in bed_images]
+
+        if self.os_name == "Windows":
+            import win32gui
+            import win32con
+            import win32process
+            import pywintypes
+            from transparent_window import TransparentWindow
+            self.win32gui = win32gui
+            self.win32con = win32con
+            self.win32process = win32process
+            self.pywintypes = pywintypes
+            self.TransparentWindow = TransparentWindow
+        elif self.os_name == "Darwin":
+            from transparent_overlay import TransparentOverlay
+            self.TransparentOverlay = TransparentOverlay
+    
+    def check_resource_path(self):
+        if hasattr(sys, '_MEIPASS'):
+            return sys._MEIPASS
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     def start_timers(self):
         self.queue_timer = QTimer()
@@ -58,14 +81,14 @@ class WidgetManager(QObject):
         
     def init_accessories(self):
         self.bed_image = CatBed()
-        pixmap = QPixmap("images/bed/bed-blue.png")
+        pixmap = QPixmap(self.image_data[0])
         self.bed_image.setPixmap(pixmap)
         self.bed_image.resize(pixmap.width(), pixmap.height())
         self.bed_image.hide()
 
     def is_own_or_parent_process(self, hwnd):
         try:
-            _, process_id = win32process.GetWindowThreadProcessId(hwnd)
+            _, process_id = self.win32process.GetWindowThreadProcessId(hwnd)
             current_process_id = os.getpid()
             parent_process_id = psutil.Process(current_process_id).ppid()
             
@@ -80,23 +103,23 @@ class WidgetManager(QObject):
             return True
         
     def get_foreground_window(self):
-        hwnd = win32gui.GetForegroundWindow()
+        hwnd = self.win32gui.GetForegroundWindow()
         if hwnd == 0:
             return
         if self.is_own_or_parent_process(hwnd):
             return
-        style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
-        if style & win32con.WS_POPUP:
+        style = self.win32gui.GetWindowLong(hwnd, self.win32con.GWL_STYLE)
+        if style & self.win32con.WS_POPUP:
             return
         try:
-            class_name = win32gui.GetClassName(hwnd)
-        except pywintypes.error:
+            class_name = self.win32gui.GetClassName(hwnd)
+        except self.pywintypes.error:
             return
         if class_name == "Shell_TrayWnd":
             return
         self.current_window_hwnd = hwnd
         if self.current_window_hwnd not in self.widgets:
-            self.widgets[self.current_window_hwnd] = TransparentWindow(
+            self.widgets[self.current_window_hwnd] = self.TransparentWindow(
             target_hwnd=self.current_window_hwnd,
             manager = self
             )
@@ -129,12 +152,12 @@ class WidgetManager(QObject):
             self.bed_image.move(self.bed_image.x(), self.animator.y())
             self.destination_check(self.widgets[self.current_animator_hwnd])
 
-        if not win32gui.IsWindow(self.widgets[self.current_animator_hwnd].target_hwnd):
+        if not self.win32gui.IsWindow(self.widgets[self.current_animator_hwnd].target_hwnd):
             self.off_screen
             self.on_animation_finished()
 
     def destination_check(self, widget):
-        if self.state == 1:
+        if self.state <= 1:
             if self.is_center:
                 self.heading_off_screen(widget)
             else:
@@ -150,12 +173,13 @@ class WidgetManager(QObject):
         if destination_x != self.before_destination_x or (self.animator.y() != self.before_destination_y and self.animation.state() == QAbstractAnimation.Running):
             self.sleep_timer.stop()
             self.hide_option()
-            win32gui.SetWindowPos(
-                self.widgets[self.current_animator_hwnd].hwnd,
-                win32con.HWND_TOPMOST,
-                0, 0, 0, 0,
-                win32con.SWP_NOMOVE | win32con.SWP_NOSIZE
-            )
+            if self.os_name == "Windows":
+                self.win32gui.SetWindowPos(
+                    self.widgets[self.current_animator_hwnd].hwnd,
+                    self.win32con.HWND_TOPMOST,
+                    0, 0, 0, 0,
+                    self.win32con.SWP_NOMOVE | self.win32con.SWP_NOSIZE
+                )
             self.topmost = True
             self.was_stopped = True
             self.off_screen = False
@@ -207,12 +231,13 @@ class WidgetManager(QObject):
         if destination_x != self.before_destination_x or (self.animator.y() != self.before_destination_y and self.animation.state() == QAbstractAnimation.Running):
             self.sleep_timer.stop()
             self.hide_option()
-            win32gui.SetWindowPos(
-                self.widgets[self.current_animator_hwnd].hwnd,
-                win32con.HWND_TOPMOST,
-                0, 0, 0, 0,
-                win32con.SWP_NOMOVE | win32con.SWP_NOSIZE
-            )
+            if self.os_name == "Windows":
+                self.win32gui.SetWindowPos(
+                    self.widgets[self.current_animator_hwnd].hwnd,
+                    self.win32con.HWND_TOPMOST,
+                    0, 0, 0, 0,
+                    self.win32con.SWP_NOMOVE | self.win32con.SWP_NOSIZE
+                )
             self.topmost = True
             self.was_stopped = True
             self.off_screen = False
@@ -236,21 +261,21 @@ class WidgetManager(QObject):
 
     def not_p_most(self):
         hwnd = self.widgets[self.current_animator_hwnd].hwnd
-        win32gui.SetWindowPos(
+        self.win32gui.SetWindowPos(
             hwnd,
-            win32con.HWND_NOTOPMOST,
+            self.win32con.HWND_NOTOPMOST,
             0, 0, 0, 0,
-            win32con.SWP_NOMOVE | win32con.SWP_NOSIZE
+            self.win32con.SWP_NOMOVE | self.win32con.SWP_NOSIZE
         )
-        win32gui.SetWindowPos(
+        self.win32gui.SetWindowPos(
             hwnd,
             self.current_window_hwnd,
             0, 0, 0, 0,
-            win32con.SWP_NOMOVE | win32con.SWP_NOSIZE
+            self.win32con.SWP_NOMOVE | self.win32con.SWP_NOSIZE
         )
         
     def change_state(self):
-        if self.state >= 7 and self.animation.state() == QAbstractAnimation.Stopped:
+        if self.state >= 12 and self.animation.state() == QAbstractAnimation.Stopped:
             self.animator.change_sprite("cat_push_" + self.cat_direction + ".png", [])
         elif self.state >= 5 and self.animation.state() == QAbstractAnimation.Stopped:
             self.animator.change_sprite("cat_sit_" + self.cat_direction + ".png", [])
@@ -258,8 +283,11 @@ class WidgetManager(QObject):
             self.visible = True
             if self.current_animator_hwnd:
                 self.animator.show()
+                if self.visible_bed:
+                    self.bed_image.fade_in()
         elif self.state == 0:
             self.animator.hide()
+            self.bed_image.hide()
             self.visible = False
         
     def process_queue(self):
@@ -276,12 +304,41 @@ class WidgetManager(QObject):
         
     def run_widget_manager(self):
         app = QApplication(sys.argv)
-        timer = QTimer()
-        timer.timeout.connect(self.get_foreground_window)
-        timer.start(10)
         self.start_timers()
         self.init_accessories()
         self.start_animation()
+        if self.os_name == "Windows":
+            timer = QTimer()
+            timer.timeout.connect(self.get_foreground_window)
+            timer.start(10)
+        elif self.os_name == "Darwin":
+            self.current_animator_hwnd = 1
+            self.current_window_hwnd = 1
+            self.widgets[1] = self.TransparentOverlay()
+            self.animator.setParent(self.widgets[self.current_window_hwnd])
+            self.current_animator_hwnd = self.current_window_hwnd
+            self.animator.setGeometry(
+                -100,
+                self.widgets[self.current_window_hwnd].height() - self.animator.frame_height - 10,
+                self.animator.frame_width,
+                self.animator.frame_height
+            )
+            if self.visible:
+                self.animator.show()
+            else:
+                self.animator.hide()
+            timer = QTimer()
+            timer.timeout.connect(lambda: self.destination_check(self.widgets[1]))
+            timer.start(100)
+            
+        def pid_check():
+            if not psutil.pid_exists(self.parent_pid):
+                app.quit()
+                
+        self.pid_check_timer = QTimer()
+        self.pid_check_timer.timeout.connect(pid_check)
+        self.pid_check_timer.start(1000)
+                
         sys.exit(app.exec_())
         
     def show_bed(self):
@@ -319,12 +376,12 @@ class WidgetManager(QObject):
         else:
             self.animator.change_sprite("cat_walk2sit_" + self.cat_direction + ".png", ["cat_sit_" + self.cat_direction + ".png"])
             if self.state < 5:
-                self.sleep_timer.start(2000)
+                self.sleep_timer.start(60000)
         if not self.was_stopped and self.off_screen:
             self.off_screen = False
             self.animator.setParent(self.widgets[self.current_window_hwnd])
             self.current_animator_hwnd = self.current_window_hwnd
-            if self.state == 1:
+            if self.state <= 1:
                 self.animator.setGeometry(
                     -100,
                     self.widgets[self.current_window_hwnd].height() - self.animator.frame_height - 10,
@@ -345,8 +402,11 @@ class WidgetManager(QObject):
             self.destination_check(self.widgets[self.current_window_hwnd])
 
 if __name__ == "__main__":
+    import platform
+    os_name = platform.system()
     queue=multiprocessing.Queue()
-    manager = WidgetManager(queue)
+    manager = WidgetManager(None, queue)
+    manager.os_name = os_name
     manager.visible = True
     manager.state = 2
     manager.run_widget_manager()

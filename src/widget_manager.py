@@ -275,7 +275,7 @@ class WidgetManager(QObject):
         )
         
     def change_state(self):
-        if self.state >= 7 and self.animation.state() == QAbstractAnimation.Stopped:
+        if self.state >= 12 and self.animation.state() == QAbstractAnimation.Stopped:
             self.animator.change_sprite("cat_push_" + self.cat_direction + ".png", [])
         elif self.state >= 5 and self.animation.state() == QAbstractAnimation.Stopped:
             self.animator.change_sprite("cat_sit_" + self.cat_direction + ".png", [])

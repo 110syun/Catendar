@@ -7,6 +7,7 @@ import sys
 import multiprocessing
 import platform
 import signal
+import csv
 from watcher import Watcher
 from widget_manager import WidgetManager
 
@@ -34,16 +35,22 @@ class AppController:
         data = [category.to_dict() for category in self.watcher.categories]
         with open(self.get_path("categories.json"), "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
+    
+    def dump_timestamps_csv(self):
+        timestamp_filename = time.strftime('log/%Y-%m-%d') + ".csv"
+        with open(self.get_path(timestamp_filename), "w", newline='', encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerows(self.watcher.timestamps)
 
     def cleanup(self):
         data = [category.to_dict() for category in self.watcher.categories]
         with open(self.get_path("categories.json"), "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
-        timestamp_filename = time.strftime('log/%Y-%m-%d') + ".txt"
-        with open(self.get_path(timestamp_filename), "w", encoding="utf-8") as f:
-            for timestamp in self.watcher.timestamps:
-                f.write(f"app: {timestamp['app']}, category: {timestamp['category']}, start: {timestamp['start']}, end: {timestamp['end']}\n")
+        timestamp_filename = time.strftime('log/%Y-%m-%d') + ".csv"
+        with open(self.get_path(timestamp_filename), "w", newline='', encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerows(self.watcher.timestamps)
 
     def load_categories(self):
         try:
@@ -53,21 +60,14 @@ class AppController:
             return None
 
     def load_timestamps(self):
-        timestamps = []
-        timestamp_filename = time.strftime('log/%Y-%m-%d') + ".txt"
+        timestamp_filename = time.strftime('log/%Y-%m-%d') + ".csv"
         try:
-            with open(self.get_path(timestamp_filename), "r", encoding="utf-8") as f:
-                for line in f:
-                    app, category, start, end = line.strip().split(", ")
-                    timestamps.append({
-                        "app": app.split(": ")[1],
-                        "category": category.split(": ")[1],
-                        "start": start.split(": ")[1],
-                        "end": end.split(": ")[1]
-                    })
+            with open(self.get_path(timestamp_filename), "r", newline='', encoding="utf-8") as f:
+                reader = csv.reader(f)
+                return [row for row in reader]
         except FileNotFoundError:
             pass
-        return timestamps
+        return None
     
     def handle_signal(self, signum, frame):
         self.cleanup()

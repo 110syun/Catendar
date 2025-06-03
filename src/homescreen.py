@@ -10,6 +10,8 @@ from category_listbox import CategoryListbox
 from category_label import CategoryLabel
 from scheduler import Scheduler
 from self_check_editor import SelfCheckEditor
+from log_window import UsageLogWindow
+from tkinter import filedialog
 
 class Homescreen:
     def __init__(self, app):
@@ -70,6 +72,16 @@ class Homescreen:
         
         root.protocol("WM_DELETE_WINDOW", hide_window)
 
+        def open_usage_log():
+            csv = filedialog.askopenfilename(
+                title="Select a log file",
+                filetypes=[("Text files", "*.csv")],
+                initialdir=os.path.join(self.app_dir, "log")
+            )
+            if csv:
+                self.controller.dump_timestamps_csv()
+                UsageLogWindow(root, csv, self.os_name)
+
         def rename_category(label, frame, category):
             category_index = self.app.categories.index(category)
             entry = tk.Entry(root)
@@ -120,6 +132,8 @@ class Homescreen:
             create_category_button.pack(side=tk.LEFT, padx=5)
             open_shceduler_button = tk.Button(button_frame, text="スケジューラーを開く", command=lambda: self.scheduler.openGUI(root))
             open_shceduler_button.pack(side=tk.LEFT, padx=5)
+            show_log_button = tk.Button(button_frame, text="ログ表示", command=open_usage_log)
+            show_log_button.pack(side=tk.LEFT, padx=5)
             for category in self.app.categories:
                 create_category_frame(category)
                 

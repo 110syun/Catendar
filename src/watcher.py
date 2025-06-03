@@ -30,7 +30,7 @@ class Watcher:
         self.previous_category = None
         self.lock = threading.Lock()
         self.running = True
-        self.timestamps = timestamps if timestamps else []
+        self.timestamps = timestamps if timestamps else [['app', 'category', 'start_time', 'end_time']]
         self.homescreen = Homescreen(self)
         self.queue = queue
 
@@ -84,7 +84,7 @@ class Watcher:
                     self.item_exists(elapsed_time)
                     if self.previous_window == window_name:
                         if self.timestamps:
-                            self.timestamps[-1]["end"] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_time))
+                            self.timestamps[-1][-1] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_time))
                     else:
                         with self.lock:
                             self.previous_window = window_name
@@ -92,12 +92,12 @@ class Watcher:
                                 for item in category.items:
                                     if item.name == self.previous_window:
                                         self.previous_category = category
-                            self.timestamps.append({
-                                "app": self.previous_window,
-                                "category": self.previous_category.name if self.previous_category else "未分類",
-                                "start": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(previous_time)),
-                                "end": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_time))
-                            })
+                            self.timestamps.append([
+                                self.previous_window,
+                                self.previous_category.name if self.previous_category else "未分類",
+                                time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(previous_time)),
+                                time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_time))
+                            ])
                 else:
                     with self.lock:
                         self.previous_window = window_name
@@ -105,12 +105,12 @@ class Watcher:
                             for item in category.items:
                                 if item.name == self.previous_window:
                                     self.previous_category = category
-                        self.timestamps.append({
-                            "app": self.previous_window,
-                            "category": self.previous_category.name if self.previous_category else "未分類",
-                            "start": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(previous_time)),
-                            "end": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_time))
-                    })
+                        self.timestamps.append([
+                            self.previous_window,
+                            self.previous_category.name if self.previous_category else "未分類",
+                            time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(previous_time)),
+                            time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_time))
+                    ])
                 previous_time = current_time
             time.sleep(1)
 

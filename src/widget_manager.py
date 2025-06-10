@@ -132,7 +132,7 @@ class WidgetManager(QObject):
                 self.current_animator_hwnd = self.current_window_hwnd
                 self.animator.setGeometry(
                     -100,
-                    self.widgets[self.current_window_hwnd].height() - self.animator.frame_height - 10,
+                    self.widgets[self.current_window_hwnd].height() - self.animator.frame_height - 40,
                     self.animator.frame_width,
                     self.animator.frame_height
                 )
@@ -148,7 +148,7 @@ class WidgetManager(QObject):
             if self.is_center:
                 self.animator.move(self.animator.x(), int((self.widgets[self.current_animator_hwnd].height() - self.animator.frame_height - 10) / 2))
             else:
-                self.animator.move(self.animator.x(), self.widgets[self.current_animator_hwnd].height() - self.animator.frame_height - 10)
+                self.animator.move(self.animator.x(), self.widgets[self.current_animator_hwnd].height() - self.animator.frame_height - 40)
             self.bed_image.move(self.bed_image.x(), self.animator.y())
             self.destination_check(self.widgets[self.current_animator_hwnd])
 
@@ -319,7 +319,7 @@ class WidgetManager(QObject):
             self.current_animator_hwnd = self.current_window_hwnd
             self.animator.setGeometry(
                 -100,
-                self.widgets[self.current_window_hwnd].height() - self.animator.frame_height - 10,
+                self.widgets[self.current_window_hwnd].height() - self.animator.frame_height - 40,
                 self.animator.frame_width,
                 self.animator.frame_height
             )
@@ -384,7 +384,7 @@ class WidgetManager(QObject):
             if self.state <= 1:
                 self.animator.setGeometry(
                     -100,
-                    self.widgets[self.current_window_hwnd].height() - self.animator.frame_height - 10,
+                    self.widgets[self.current_window_hwnd].height() - self.animator.frame_height - 40,
                     self.animator.frame_width,
                     self.animator.frame_height
                 )

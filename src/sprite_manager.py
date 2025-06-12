@@ -54,7 +54,7 @@ class SpriteManager(QLabel):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton and self.manager.animation.state() == QAbstractAnimation.Stopped:
-            self.manager.show_option()
+            self.manager.toggle_option_display()
         super().mousePressEvent(event)
 
     def update_frame(self):
@@ -85,12 +85,19 @@ class SpriteManager(QLabel):
             self.animation_queue = animation_queue
         self.timer.stop()
         sprite = self.sprites[filename]
-        self.sprite_sheet = QPixmap(sprite.sprite_path)
+        pixmap = QPixmap(sprite.sprite_path)
+        self.sprite_sheet = pixmap.scaled(
+            pixmap.width() * self.manager.scale,
+            pixmap.height() * self.manager.scale,
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation
+        )
         self.num_frames = sprite.num_frames
         self.current_frame = 0
         self.frame_width = self.sprite_sheet.width() // self.num_frames
         self.frame_height = self.sprite_sheet.height()
         self.current_sprite_filename = filename
+        self.resize(self.frame_width, self.frame_width)
         self.update_frame()
         self.timer.start(sprite.frame_time)
         

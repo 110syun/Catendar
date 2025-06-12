@@ -5,6 +5,7 @@ from PyQt5.QtCore import QTimer, Qt, QPoint, QPropertyAnimation, QEasingCurve, p
 from sprite_manager import SpriteManager
 from option_image import OptionImage
 from cat_bed import CatBed
+from scaling_label import ScalingLabel
 import multiprocessing
 import os
 import math
@@ -31,6 +32,8 @@ class WidgetManager(QObject):
         self.cat_direction = "r"
         self.state = 0
         self.is_center = False
+        self.current_option_state = 0
+        self.scale = 1
         
         self.resource_path = self.check_resource_path()
 
@@ -38,8 +41,14 @@ class WidgetManager(QObject):
             "bed-blue.png",
             "bed-pink.png",
             "bed-white.png"]
-        image_dir = os.path.join(self.resource_path, "images", "bed")
-        self.image_data = [os.path.join(image_dir, img) for img in bed_images]
+        arrow_images = [
+            "arrow_up.png",
+            "arrow_down.png"
+        ]
+        bed_image_dir = os.path.join(self.resource_path, "images", "bed")
+        arrow_image_dir = os.path.join(self.resource_path, "images", "arrow")
+        self.bed_image_data = [os.path.join(bed_image_dir, img) for img in bed_images]
+        self.arrow_image_data = [os.path.join(arrow_image_dir, img) for img in arrow_images]
 
         if self.os_name == "Windows":
             import win32gui
@@ -81,9 +90,16 @@ class WidgetManager(QObject):
         
     def init_accessories(self):
         self.bed_image = CatBed()
-        pixmap = QPixmap(self.image_data[0])
-        self.bed_image.setPixmap(pixmap)
-        self.bed_image.resize(pixmap.width(), pixmap.height())
+        self.current_bed_image = self.bed_image_data[0]
+        pixmap = QPixmap(self.bed_image_data[0])
+        scaled_pixmap = pixmap.scaled(
+            pixmap.width() * self.scale,
+            pixmap.height() * self.scale,
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation
+        )
+        self.bed_image.setPixmap(scaled_pixmap)
+        self.bed_image.resize(scaled_pixmap.width(), scaled_pixmap.height())
         self.bed_image.hide()
 
     def is_own_or_parent_process(self, hwnd):
@@ -345,28 +361,77 @@ class WidgetManager(QObject):
         self.bed_image.setParent(self.widgets[self.current_animator_hwnd])
         self.bed_image.move(self.animator.pos())
         self.bed_image.stackUnder(self.animator)
-        self.bed_image.fade_in()
-        
-    def show_option(self):
-        for i, image_data in enumerate(self.image_data):
-            angle = (math.pi / 2) + ((math.pi / 2) * i / (len(self.image_data) - 1))
+        if self.state != 0:
+            self.bed_image.fade_in()
+
+    def toggle_option_display(self):
+        self.current_option_state += 1
+        self.current_option_state %= 3
+        if self.current_option_state == 0:
+            self.hide_option()
+        elif self.current_option_state == 1:
+            self.bed_color_option()
+        else:
+            self.cat_size_option()
+
+    def cat_size_option(self):
+        self.hide_option()
+        for i, arrow_image_data in enumerate(self.arrow_image_data):
+            angle = (math.pi / 2) + ((math.pi / 2) * i / (2))
             x = self.animator.x() + 50 * math.cos(angle)
             y = self.animator.y() - 50 * math.sin(angle)
             
-            label = OptionImage(self, image_data)
+            label = ScalingLabel(self, arrow_image_data, i)
             label.setParent(self.widgets[self.current_animator_hwnd])
             label.move(int(x), int(y))
             label.show()
             self.options.append(label)
+
+    def scale_up(self):
+        self.scale += 1
+        self.update_scale()
+        self.current_option_state == 0
+        self.hide_option()
+
+    def scale_down(self):
+        if self.scale > 1:
+            self.scale -= 1
+            self.update_scale()
+        self.current_option_state == 0
+        self.hide_option()
+
+    def update_scale(self):
+        self.animator.change_sprite("cat_sit_" + self.cat_direction + ".png", [])
+        self.change_bed_image()
+
+    def bed_color_option(self):
+        self.hide_option()
+        for i, bed_image_data in enumerate(self.bed_image_data):
+            angle = (math.pi / 2) + ((math.pi / 2) * i / (len(self.bed_image_data) - 1))
+            x = self.animator.x() + 50 * math.cos(angle)
+            y = self.animator.y() - 50 * math.sin(angle)
             
+            label = OptionImage(self, bed_image_data)
+            label.setParent(self.widgets[self.current_animator_hwnd])
+            label.move(int(x), int(y))
+            label.show()
+            self.options.append(label)
+        
     def hide_option(self):
         for label in self.options:
             label.deleteLater()
         self.options.clear()
             
-    def change_bed_image(self, image):
-        pixmap = QPixmap(image)
-        self.bed_image.setPixmap(pixmap)
+    def change_bed_image(self):
+        pixmap = QPixmap(self.current_bed_image)
+        scaled_pixmap = pixmap.scaled(
+            pixmap.width() * self.scale,
+            pixmap.height() * self.scale,
+            Qt.KeepAspectRatio,
+            Qt.SmoothTransformation
+        )
+        self.bed_image.setPixmap(scaled_pixmap)
+        self.bed_image.resize(scaled_pixmap.width(), scaled_pixmap.height())
         self.hide_option()
 
     @pyqtSlot()
